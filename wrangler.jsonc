@@ -3,8 +3,22 @@
   "name": "todly",
   "main": "worker.ts",
   "compatibility_date": "2026-05-15",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "keep_vars": true,
-  "d1_databases": [{ "binding": "DB", "database_name": "todly-db", "database_id": "84a04927-f61e-495a-8a60-bcc0767b9d53", "migrations_dir": "drizzle" }]
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "todly-db",
+      "database_id": "84a04927-f61e-495a-8a60-bcc0767b9d53",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "APP_URL": "https://todly.antonioemanuelespena.workers.dev",
+    "SUPABASE_URL": "https://wqngdoqxilqgyfqxajlc.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_lgExiwpP4akTdstZ-A8utQ_QdEl-MrI"
+  }
 }
