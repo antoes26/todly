@@ -1,15 +1,11 @@
 import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "../../chatgpt-auth";
-import seedTasks from "../../../data-seed.json";
+import { getAppUser } from "../../../lib/auth-context";
 
-// Original import belongs only to the verified, Site-scoped owner identity.
-// Never derive this from a client field, email, or the first person to sign in.
-const ORIGINAL_OWNER_ID = "migration-owner-not-configured";
 export const dynamic = "force-dynamic";
 function json(body: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("Cache-Control", "private, no-store, max-age=0");
-  headers.set("Vary", "Cookie, oai-authenticated-user-id");
+  headers.set("Vary", "Cookie");
   return Response.json(body, { ...init, headers });
 }
 
@@ -24,7 +20,6 @@ async function save(userId: string, task: Task, id = task.id) {
   await database().prepare("INSERT INTO task_records (key, user_id, payload, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at")
     .bind(`${userId}:${id}`, userId, JSON.stringify(task), new Date().toISOString()).run();
 }
-const importedCreationDate = (task: Task) => task.sourceDate ? `${task.sourceDate}T12:00:00.000Z` : undefined;
 
 type AreaSettings = { pinned?: boolean; archived?: boolean; deleted?: boolean };
 async function readState(userId: string) {
@@ -39,11 +34,6 @@ async function readState(userId: string) {
   } catch { /* Keep intact imported records available. */ }
   const resolve = (name: string) => { const seen = new Set<string>(); let value = name; while (renames.has(value) && !seen.has(value)) { seen.add(value); value = renames.get(value)!; } return value; };
   const tasks = new Map<string, Task>();
-  for (const source of (userId === ORIGINAL_OWNER_ID ? seedTasks : []) as Task[]) {
-    const saved = changes.get(source.id); if (saved) changes.delete(source.id);
-    const task = saved?.task;
-    if (!task?.deleted) tasks.set(source.id, { ...source, ...(task ?? {}), createdAt: task?.createdAt || importedCreationDate(source), project: resolve(task?.project || source.project) });
-  }
   for (const [id, saved] of changes) if (!saved.task.deleted) tasks.set(id, { ...saved.task, createdAt: saved.task.createdAt || saved.updatedAt, project: resolve(saved.task.project) });
   return { tasks: [...tasks.values()].filter(t => !settings[t.project]?.deleted).map(t => t.priority === "Di routine" && t.status === "Completato" && t.completedOn !== todayInRome() ? { ...t, status: "Da iniziare" as const, completedOn: null } : t), settings, renames, resolve };
 }
@@ -52,7 +42,7 @@ function metadataStatement(userId: string, key: string, payload: unknown) {
     .bind(`${userId}:${key}`, userId, JSON.stringify(payload), new Date().toISOString());
 }
 export async function GET() {
-  const user = await getChatGPTUser();
+  const user = await getAppUser();
   if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
     const state = await readState(user.userId);
@@ -61,7 +51,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = await getChatGPTUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
+  const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
     const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean };
     if (payload.action && ["renameProject", "pinProject", "archiveProject", "deleteProject"].includes(payload.action)) {
@@ -96,7 +86,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const user = await getChatGPTUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
+  const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
     const payload = await request.json() as Partial<Task>;
     if (typeof payload.id !== "string" || typeof payload.title !== "string" || !payload.title.trim()) return json({ error: "Attività non valida." }, { status: 400 });
@@ -108,7 +98,7 @@ export async function PATCH(request: Request) {
   } catch (error) { console.error("TodlyCodex task update failed", error); return json({ error: "Non riesco a salvare la modifica. Riprova." }, { status: 503 }); }
 }
 export async function DELETE(request: Request) {
-  const user = await getChatGPTUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
+  const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try { const { id } = await request.json() as { id?: string }; if (typeof id !== "string" || !id) return json({ error: "Attività non valida." }, { status: 400 }); const state = await readState(user.userId); if (!state.tasks.some(t => t.id === id)) return json({ error: "Attività non trovata." }, { status: 404 }); await save(user.userId, { id, title: "", description: "", project: "", category: "", status: "Da iniziare", priority: "Media", dueDate: null, deleted: true }); return json({ ok: true }); }
   catch (error) { console.error("TodlyCodex task delete failed", error); return json({ error: "Non riesco a eliminare l’attività. Riprova." }, { status: 503 }); }
 }

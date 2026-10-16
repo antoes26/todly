@@ -1,0 +1,4 @@
+# Copiare in .dev.vars solo per sviluppo locale. Non inserire segreti in GitHub.
+SUPABASE_URL=https://PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+APP_URL=http://localhost:5173

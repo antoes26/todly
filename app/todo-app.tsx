@@ -11,13 +11,18 @@ const italianDate = (value?:string|null) => value ? new Intl.DateTimeFormat("it-
 
 const todayInRome=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const taskOrder=(a:Task,b:Task)=>Number(a.status==="Completato")-Number(b.status==="Completato")||Number(b.priority==="Di routine")-Number(a.priority==="Di routine")||Number(!!b.pinned)-Number(!!a.pinned)||new Date(b.createdAt??b.sourceDate??0).getTime()-new Date(a.createdAt??a.sourceDate??0).getTime();
-export function Dashboard({displayName,signOutHref}:{displayName:string;signOutHref:string}) {
+export function Dashboard({displayName}:{displayName:string}) {
   const [tasks,setTasks] = useState<Task[]>([]), [loading,setLoading]=useState(true), [view,setView]=useState<View>("overview");
   const [project,setProject]=useState("Tutte le aree"), [status,setStatus]=useState<(typeof statuses)[number]>("Tutte"), [query,setQuery]=useState(""), [createdRange,setCreatedRange]=useState("Tutte le date");
   const [modal,setModal]=useState(false), [editing,setEditing]=useState<Task|null>(null), [mobileMenu,setMobileMenu]=useState(false), [sidebarCollapsed,setSidebarCollapsed]=useState(false);
   const [areaSettings,setAreaSettings]=useState<AreaSettings>({}), [showArchived,setShowArchived]=useState(false), [areaMenu,setAreaMenu]=useState<{name:string;x:number;y:number}|null>(null), [areaBusy,setAreaBusy]=useState(false);
   const [taskMenu,setTaskMenu]=useState<{task:Task;x:number;y:number}|null>(null),[archivedTasks,setArchivedTasks]=useState(false);
   const [error,setError]=useState(""), [saving,setSaving]=useState(false);
+  async function signOut(){
+    if(saving)return;
+    setSaving(true);setError("");
+    try{const response=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"signout"})});if(!response.ok)throw new Error("Uscita non riuscita. Riprova.");window.location.assign("/")}catch(e){setError(e instanceof Error?e.message:"Connessione non disponibile.");setSaving(false)}
+  }
   async function load(){setLoading(true);setError("");try{const r=await fetch("/api/tasks",{cache:"no-store"});const d=await r.json() as {error?:string;tasks?:Task[];areaSettings?:AreaSettings};if(!r.ok)throw new Error(d.error||"Caricamento non riuscito");setTasks(d.tasks??[]);setAreaSettings(d.areaSettings??{})}catch(e){setError(e instanceof Error?e.message:"Errore di caricamento")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
   const allProjects=useMemo(()=>[...new Set(tasks.map(t=>t.project))].sort((a,b)=>a.localeCompare(b,"it")),[tasks]);
@@ -64,7 +69,7 @@ export function Dashboard({displayName,signOutHref}:{displayName:string;signOutH
         {projects.map(areaRow)}
         {archivedProjects.length>0&&<><button className="archived-toggle" onClick={()=>setShowArchived(v=>!v)} aria-expanded={showArchived}><Archive size={15}/><span>Aree archiviate</span><small>{archivedProjects.length}</small><ChevronDown size={14}/></button>{showArchived&&archivedProjects.map(areaRow)}</>}
       </nav>
-        <div className="sidebar-bottom"><div className="user-avatar">{displayName.slice(0,1).toUpperCase()}</div><div className="user-info"><strong>{displayName.split("@")[0]}</strong><span>Il tuo account</span></div><a href={signOutHref} className="logout" aria-label="Esci"><LogOut size={17}/></a></div>
+        <div className="sidebar-bottom"><div className="user-avatar">{displayName.slice(0,1).toUpperCase()}</div><div className="user-info"><strong>{displayName.split("@")[0]}</strong><span>Il tuo account</span></div><button type="button" onClick={() => void signOut()} disabled={saving} className="logout" aria-label="Esci"><LogOut size={17}/></button></div>
     </aside>
     {mobileMenu&&<button className="mobile-scrim" onClick={()=>setMobileMenu(false)} aria-label="Chiudi menu"/>}
     <section className="main-area">
