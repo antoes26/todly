@@ -1,0 +1,74 @@
+// Runs the real handlers against SQLite, replacing only platform identity/binding.
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const { DatabaseSync } = require('node:sqlite');
+const ts = require('typescript');
+const seed = [{ id: 'sample-task', title: 'Sample task', description: '', project: 'Sample area', category: '', status: 'Da iniziare', priority: 'Media', dueDate: null }];
+const source = fs.readFileSync('app/api/tasks/route.ts', 'utf8');
+const owner = source.match(/const ORIGINAL_OWNER_ID = "([^"]+)"/)[1];
+let userId = owner;
+const db = new DatabaseSync(':memory:');
+db.exec('CREATE TABLE task_records (key TEXT PRIMARY KEY, user_id TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL)');
+const binding = {
+  prepare(sql) { return { bind(...args) { return {
+    all: async () => ({ results: db.prepare(sql).all(...args) }),
+    run: async () => db.prepare(sql).run(...args),
+  }; } }; },
+  async batch(statements) { db.exec('BEGIN'); try { const r = []; for (const s of statements) r.push(await s.run()); db.exec('COMMIT'); return r; } catch(e) { db.exec('ROLLBACK'); throw e; } },
+};
+function load(code) {
+  const module = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, {
+    exports: module.exports, module,
+    require(name) {
+      if(name === 'cloudflare:workers') return { env: { DB: binding } };
+      if(name.includes('chatgpt-auth')) return { getChatGPTUser: async () => userId ? { userId, email: 'test@example.com' } : null };
+      if(name.includes('data-seed')) return seed;
+      throw Error(name);
+    }, Response, Request, Headers, crypto: require('node:crypto').webcrypto, console, Intl, Date,
+  });
+  return module.exports;
+}
+const api = load(source);
+const req = (method, body) => new Request('https://todly.test/api/tasks', { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+const state = async () => { const r = await api.GET(); assert.equal(r.status, 200); assert.match(r.headers.get('cache-control'), /private, no-store/); return r.json(); };
+(async () => {
+  // Optional private snapshot verifies every owner's task/settings is unchanged.
+  if(process.env.TODLY_BACKUP) {
+    const backup = JSON.parse(fs.readFileSync(process.env.TODLY_BACKUP, 'utf8'));
+    for(const page of backup.pages) for(const row of page.rows) db.prepare('INSERT INTO task_records VALUES (?, ?, ?, ?)').run(row.key,row.user_id,row.payload,row.updated_at);
+    const old = load(fs.readFileSync('/tmp/todly-before.ts','utf8'));
+    assert.deepEqual(await state(), await (await old.GET()).json());
+  }
+  const original = await state();
+  assert.equal(original.tasks.length, seed.length);
+  const target = original.tasks[0];
+  userId = 'separate-account-b';
+  assert.deepEqual(await state(), { tasks: [], areaSettings: {} });
+  assert.equal((await api.PATCH(req('PATCH', target))).status,404);
+  assert.equal((await api.DELETE(req('DELETE', {id:target.id}))).status,404);
+  for(const action of ['renameProject','pinProject','archiveProject','deleteProject']) assert.equal((await api.POST(req('POST',{action,from:target.project,to:'Hacked',value:true}))).status,404);
+  const created = await api.POST(req('POST',{title:'Private B',project:'B area',user_id:owner,priority:'Di routine'}));
+  assert.equal(created.status,201);
+  let b = (await created.json()).task;
+  assert.equal((await state()).tasks.length,1);
+  const updated = await api.PATCH(req('PATCH',{...b,description:'B notes',archived:true,pinned:true,createdAt:'1900-01-01',status:'Completato'}));
+  assert.equal(updated.status,200);
+  b = (await updated.json()).task;
+  assert.notEqual(b.createdAt,'1900-01-01');
+  assert(b.archived && b.pinned && b.completedOn);
+  assert.equal((await api.PATCH(req('PATCH',{...b,id:'area-settings:B area'}))).status,404);
+  userId=owner;
+  assert.deepEqual(await state(),original);
+  assert.equal((await api.PATCH(req('PATCH',b))).status,404);
+  assert.equal((await api.DELETE(req('DELETE',{id:b.id}))).status,404);
+  userId='separate-account-b';
+  assert.equal((await api.DELETE(req('DELETE',{id:b.id}))).status,200);
+  assert.equal((await state()).tasks.length,0);
+  userId='separate-account-c';
+  assert.deepEqual(await state(),{tasks:[],areaSettings:{}});
+  userId=null;
+  for(const method of ['GET','POST','PATCH','DELETE']) assert.equal((await api[method](method==='GET'?undefined:req(method,{title:'No',id:target.id}))).status,401);
+  console.log('PASS: owner preservation, empty accounts, cross-account reads/writes, area isolation, metadata protection, routine/archive/delete and anonymous access.');
+})().catch(e=>{console.error(e);process.exitCode=1});
