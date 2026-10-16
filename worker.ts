@@ -36,6 +36,10 @@ export default {
     headers.set("X-Content-Type-Options", "nosniff");
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("X-Frame-Options", "DENY");
+    if (url.pathname === "/sw.js" || url.pathname === "/manifest.webmanifest") {
+      headers.set("Cache-Control", "no-cache");
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
 };
+

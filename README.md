@@ -37,3 +37,12 @@ Non caricare backup, attivita personali, `.dev.vars`, password, chiavi segrete o
 ## Verifiche
 
 I test locali coprono separazione account, operazioni sulle attivita, gestione delle identita, flussi di accesso simulati e controlli di origine. Email reali, Google e il nuovo database remoto vanno verificati dopo la configurazione dei servizi.
+
+
+## App installabile (PWA)
+
+Su iPhone aprire il sito in Safari, scegliere Condividi → Aggiungi alla schermata Home e confermare il nome Todly. L'icona usa la spunta bianca su fondo antracite del marchio. Il manifest e le icone PNG includono la versione Apple e quella maskable.
+
+L'app richiede Internet per accesso, lettura e salvataggio: il service worker memorizza solo la pagina pubblica di connessione assente. Non salva pagine autenticate, risposte API, callback di accesso o attività. L'interfaccia mobile usa safe area, altezza dinamica, campi leggibili e comandi touch. Le modifiche su main attivano la build Cloudflare già collegata al repository.
+
+Verifica PWA: `node scripts/test-pwa.cjs`. Verificare anche l'installazione e l'accesso Google su un iPhone reale dopo il deploy.

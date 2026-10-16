@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Todly",
+  "short_name": "Todly",
+  "description": "Il tuo spazio personale per attività, aree di lavoro e scadenze.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icons/todly-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/todly-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/todly-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
