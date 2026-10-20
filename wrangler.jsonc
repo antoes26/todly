@@ -20,5 +20,15 @@
     "APP_URL": "https://todly.antonioemanuelespena.workers.dev",
     "SUPABASE_URL": "https://wqngdoqxilqgyfqxajlc.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_lgExiwpP4akTdstZ-A8utQ_QdEl-MrI"
+  },
+  "previews": {
+    "vars": {
+      "APP_URL": "https://todly.antonioemanuelespena.workers.dev",
+      "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_lgExiwpP4akTdstZ-A8utQ_QdEl-MrI",
+      "SUPABASE_URL": "https://wqngdoqxilqgyfqxajlc.supabase.co"
+    },
+    "d1_databases": [
+      { "binding": "DB", "database_id": "84a04927-f61e-495a-8a60-bcc0767b9d53" }
+    ]
   }
 }
