@@ -21,7 +21,7 @@ async function save(userId: string, task: Task, id = task.id) {
     .bind(`${userId}:${id}`, userId, JSON.stringify(task), new Date().toISOString()).run();
 }
 
-type AreaSettings = { pinned?: boolean; archived?: boolean; deleted?: boolean };
+type AreaSettings = { pinned?: boolean; archived?: boolean; deleted?: boolean; color?: string };
 async function readState(userId: string) {
   const result = await database().prepare("SELECT payload, updated_at FROM task_records WHERE user_id = ?").bind(userId).all<{ payload: string; updated_at: string }>();
   const changes = new Map<string, { task: Task; updatedAt: string }>(), renames = new Map<string, string>();
@@ -53,15 +53,26 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
-    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean };
+    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean; color?: string };
+    if (payload.action === "createProject") {
+      const name = typeof payload.name === "string" ? payload.name.trim() : "";
+      if (!name || name.length > 80 || name === "Tutte le aree") return json({ error: "Inserisci un nome di massimo 80 caratteri." }, { status: 400 });
+      if (typeof payload.color !== "string" || !/^#[0-9a-f]{6}$/i.test(payload.color)) return json({ error: "Scegli un colore valido." }, { status: 400 });
+      const state = await readState(user.userId);
+      // Reserve historical names as well: reusing aliases or tombstones could revive old tasks.
+      if (state.tasks.some(t => t.project.toLocaleLowerCase("it") === name.toLocaleLowerCase("it")) || Object.keys(state.settings).some(n => n.toLocaleLowerCase("it") === name.toLocaleLowerCase("it")) || [...state.renames.keys()].some(n => n.toLocaleLowerCase("it") === name.toLocaleLowerCase("it"))) return json({ error: "Questo nome è già utilizzato. Scegline un altro." }, { status: 409 });
+      const settings: AreaSettings = { color: payload.color.toLowerCase() };
+      await metadataStatement(user.userId, `area-settings:${name}`, { kind: "areaSettings", name, settings }).run();
+      return json({ project: name, settings }, { status: 201 });
+    }
     if (payload.action && ["renameProject", "pinProject", "archiveProject", "deleteProject"].includes(payload.action)) {
       const state = await readState(user.userId);
       const from = typeof payload.from === "string" ? payload.from.trim() : typeof payload.name === "string" ? payload.name.trim() : "";
-      if (!state.tasks.some(t => t.project === from)) return json({ error: "Area non trovata." }, { status: 404 });
+      if (state.settings[from]?.deleted || (!state.settings[from] && !state.tasks.some(t => t.project === from))) return json({ error: "Area non trovata." }, { status: 404 });
       const settings = { ...state.settings[from] };
       if (payload.action === "renameProject") {
         const to = typeof payload.to === "string" ? payload.to.trim() : "";
-        if (!to || to.length > 80 || to === from || state.tasks.some(t => t.project === to) || state.settings[to]?.deleted) return json({ error: "Scegli un nome diverso, libero e di massimo 80 caratteri." }, { status: 400 });
+        if (!to || to.length > 80 || to === from || state.tasks.some(t => t.project === to) || Object.hasOwn(state.settings, to) || state.renames.has(to)) return json({ error: "Scegli un nome diverso, libero e di massimo 80 caratteri." }, { status: 400 });
         const aliases = new Map(state.renames);
         for (const [key] of aliases) if (state.resolve(key) === from) aliases.set(key, to);
         aliases.delete(to); aliases.set(from, to);
