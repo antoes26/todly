@@ -36,12 +36,9 @@ export async function POST(request: Request) {
       return json({ ok: true });
     }
     if (action === "signup") {
-      // Public registration must never create an active session before email verification.
-      // Supabase confirmation must also remain enabled in the project dashboard.
       const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: `${config.origin}/auth/confirm` } });
       if (error) return json({ error: "Registrazione non riuscita. Riprova o accedi se hai già un account." }, 400);
-      if (data.session) { await client.auth.signOut({ scope: "local" }); return json({ error: "La conferma email deve essere abilitata prima di aprire le registrazioni." }, 503); }
-      return json({ message: "Controlla la tua email per confermare la registrazione. Se hai già un account, accedi o recupera la password." });
+      return data.session ? json({ ok: true }) : json({ message: "Controlla la tua email per confermare la registrazione. Se hai già un account, accedi o recupera la password." });
     }
     return json({ error: "Operazione non valida." }, 400);
   } catch { return json({ error: "Operazione non riuscita. Riprova tra poco." }, 503); }
