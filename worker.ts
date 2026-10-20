@@ -5,7 +5,7 @@ import { runWithAuth } from "./lib/auth-context";
 
 export default {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
-    const config = readAuthConfig(env as unknown as Record<string, unknown>);
+    const config = readAuthConfig(env as unknown as Record<string, unknown>, request.url);
     const url = new URL(request.url);
     const protectedPath = url.pathname === "/" || url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/");
     if (!isSameOriginWrite(request, config?.origin ?? url.origin)) {

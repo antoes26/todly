@@ -21,6 +21,11 @@ const request = body => new Request('https://todly.example/api/auth', { method: 
   assert.equal(config.readAuthConfig({}), null);
   assert.equal(config.readAuthConfig({ SUPABASE_URL: settings.url, SUPABASE_PUBLISHABLE_KEY: settings.key, APP_URL: 'http://public.example' }), null);
   assert.equal(config.readAuthConfig({ SUPABASE_URL: settings.url, SUPABASE_PUBLISHABLE_KEY: settings.key, APP_URL: settings.origin }).origin, settings.origin);
+  const live = { SUPABASE_URL: settings.url, SUPABASE_PUBLISHABLE_KEY: settings.key, APP_URL: 'https://todly.me.workers.dev' };
+  assert.equal(config.readAuthConfig(live, 'https://todly.me.workers.dev/auth/google').origin, 'https://todly.me.workers.dev');
+  for (const preview of ['https://abc123-todly.me.workers.dev', 'https://claude-fix-colors-todly.me.workers.dev']) assert.equal(config.readAuthConfig(live, `${preview}/auth/google`).origin, preview);
+  for (const other of ['https://evil.example/x', 'https://a.b-todly.me.workers.dev/', 'https://-todly.me.workers.dev/', 'http://abc-todly.me.workers.dev/', 'https://abc-todly.me.workers.dev:8443/', 'https://abc-todly.me.workers.dev.evil/']) assert.equal(config.readAuthConfig(live, other).origin, 'https://todly.me.workers.dev');
+  assert.equal(config.readAuthConfig({ ...live, APP_URL: settings.origin }, 'https://abc-todly.example/').origin, settings.origin);
   for (const origin of ['https://evil.example', 'https://todly.example.evil', null]) {
     const headers = origin ? { Origin: origin } : {};
     assert.equal(config.isSameOriginWrite(new Request(settings.origin, { method: 'POST', headers }), settings.origin), false);
