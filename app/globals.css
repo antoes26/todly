@@ -99,3 +99,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .page-heading{flex-wrap:wrap}
   .page-heading>.primary-button{display:inline-flex;flex:none;min-height:44px;white-space:nowrap}
 }
+
+/* Mobile: "Aggiungi attività" becomes a compact "+" button beside the page title (as in the Figma mobile design). */
+@media(max-width:760px){
+  .page-heading{flex-wrap:nowrap;align-items:flex-start}
+  .page-heading>div:first-child{flex:1;min-width:0}
+  .page-heading>.add-task-button{width:47px;min-width:47px;height:44px;min-height:44px;padding:0 15px;gap:0;margin-top:10px}
+  .page-heading>.add-task-button svg{flex:none}
+  .add-task-label{display:none}
+}
