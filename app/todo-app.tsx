@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, Clock3, Folder, LayoutDashboard, ListTodo, LogOut, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Archive, ArchiveRestore, Trash2, Repeat2, ArrowRightLeft, Pencil, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 type Task = { id:string; title:string; description:string; project:string; category:string; status:"Da iniziare"|"In corso"|"Completato"; priority:"Alta"|"Media"|"Bassa"|"Di routine"; dueDate:string|null; sourceDate?:string|null; createdAt?:string; isImported?:boolean; pinned?:boolean; archived?:boolean; completedOn?:string|null };
@@ -160,10 +160,13 @@ const areaColors=["#adc5d1","#7aa7c7","#3f7cac","#6c8ea4","#8fb9a8","#4f9d69","#
 function ColorPicker({value,disabled,labelledBy,onChange}:{value:string;disabled?:boolean;labelledBy:string;onChange:(color:string)=>void}){
   const [expanded,setOpen]=useState(false),open=expanded&&!disabled,[draft,setDraft]=useState(value),ref=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(!open)return;const outside=(event:PointerEvent)=>{if(ref.current&&!ref.current.contains(event.target as Node))setOpen(false)};document.addEventListener("pointerdown",outside);return()=>document.removeEventListener("pointerdown",outside)},[open]);
+  // The popover floats over the modal so opening it never changes the modal's size: below the button, or above it when there is no room.
+  const triggerRef=useRef<HTMLButtonElement>(null),popoverRef=useRef<HTMLDivElement>(null);
+  useLayoutEffect(()=>{if(!open)return;const place=()=>{const trigger=triggerRef.current,popover=popoverRef.current;if(!trigger||!popover)return;const button=trigger.getBoundingClientRect(),height=popover.offsetHeight,width=popover.offsetWidth,below=button.bottom+8;popover.style.top=`${below+height>window.innerHeight-8&&button.top-8-height>=8?button.top-8-height:below}px`;popover.style.left=`${Math.max(8,Math.min(button.left,window.innerWidth-width-8))}px`};place();window.addEventListener("resize",place);window.addEventListener("scroll",place,true);return()=>{window.removeEventListener("resize",place);window.removeEventListener("scroll",place,true)}},[open]);
   const commit=(text:string)=>{const hex=text.trim().startsWith("#")?text.trim():`#${text.trim()}`;if(/^#[0-9a-f]{6}$/i.test(hex))onChange(hex.toLowerCase())};
   return <div className="color-picker" ref={ref} onKeyDown={event=>{if(event.key==="Escape"&&open){event.stopPropagation();setOpen(false)}}}>
-    <button type="button" className="color-trigger" disabled={disabled} aria-labelledby={labelledBy} aria-expanded={open} onClick={()=>{if(!open)setDraft(value);setOpen(!open)}}><span style={{background:value}}/><code>{value}</code><ChevronDown size={15}/></button>
-    {open&&<div className="color-popover" role="dialog" aria-labelledby={labelledBy}>
+    <button type="button" ref={triggerRef} className="color-trigger" disabled={disabled} aria-labelledby={labelledBy} aria-expanded={open} onClick={()=>{if(!open)setDraft(value);setOpen(!open)}}><span style={{background:value}}/><code>{value}</code><ChevronDown size={15}/></button>
+    {open&&<div className="color-popover" ref={popoverRef} role="dialog" aria-labelledby={labelledBy}>
       <div className="color-swatches">{areaColors.map(swatch=><button key={swatch} type="button" className={swatch===value?"is-selected":""} style={{background:swatch}} aria-label={swatch} aria-pressed={swatch===value} onClick={()=>{onChange(swatch);setOpen(false)}}>{swatch===value&&<Check size={13}/>}</button>)}</div>
       <label className="color-hex">Personalizzato<input value={draft} maxLength={7} spellCheck={false} placeholder="#adc5d1" onChange={event=>{setDraft(event.target.value);commit(event.target.value)}} onBlur={()=>setDraft(value)} onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();setOpen(false)}}}/></label>
     </div>}
