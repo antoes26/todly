@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, Clock3, Folder, LayoutDashboard, ListTodo, LogOut, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Archive, ArchiveRestore, Trash2, Repeat2, ArrowRightLeft, Pencil, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 type Task = { id:string; title:string; description:string; project:string; category:string; status:"Da iniziare"|"In corso"|"Completato"; priority:"Alta"|"Media"|"Bassa"|"Di routine"; dueDate:string|null; sourceDate?:string|null; createdAt?:string; isImported?:boolean; pinned?:boolean; archived?:boolean; completedOn?:string|null };
@@ -11,21 +11,22 @@ const italianDate = (value?:string|null) => value ? new Intl.DateTimeFormat("it-
 
 const todayInRome=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const taskOrder=(a:Task,b:Task)=>Number(a.status==="Completato")-Number(b.status==="Completato")||Number(b.priority==="Di routine")-Number(a.priority==="Di routine")||Number(!!b.pinned)-Number(!!a.pinned)||new Date(b.createdAt??b.sourceDate??0).getTime()-new Date(a.createdAt??a.sourceDate??0).getTime();
-export function Dashboard({displayName}:{displayName:string}) {
-  const [tasks,setTasks] = useState<Task[]>([]), [loading,setLoading]=useState(true), [view,setView]=useState<View>("overview");
+export function Dashboard({displayName,initialTasks,initialAreaSettings}:{displayName:string;initialTasks?:Task[];initialAreaSettings?:AreaSettings}) {
+  const [tasks,setTasks] = useState<Task[]>(initialTasks??[]), [loading,setLoading]=useState(!initialTasks), [view,setView]=useState<View>("overview");
   const [project,setProject]=useState("Tutte le aree"), [status,setStatus]=useState<(typeof statuses)[number]>("Tutte"), [query,setQuery]=useState(""), [createdRange,setCreatedRange]=useState("Tutte le date");
   const [modal,setModal]=useState(false), [editing,setEditing]=useState<Task|null>(null), [mobileMenu,setMobileMenu]=useState(false), [sidebarCollapsed,setSidebarCollapsed]=useState(false);
-  const [areaSettings,setAreaSettings]=useState<AreaSettings>({}), [showArchived,setShowArchived]=useState(false), [areaMenu,setAreaMenu]=useState<{name:string;x:number;y:number}|null>(null), [areaBusy,setAreaBusy]=useState(false);
+  const [areaSettings,setAreaSettings]=useState<AreaSettings>(initialAreaSettings??{}), [showArchived,setShowArchived]=useState(false), [areaMenu,setAreaMenu]=useState<{name:string;x:number;y:number}|null>(null), [areaBusy,setAreaBusy]=useState(false);
   const [taskMenu,setTaskMenu]=useState<{task:Task;x:number;y:number}|null>(null),[archivedTasks,setArchivedTasks]=useState(false);
   const [areaModal,setAreaModal]=useState(false);
   const [error,setError]=useState(""), [saving,setSaving]=useState(false);
+  const queue=useRef(new Map<string,Promise<void>>());
   async function signOut(){
     if(saving)return;
     setSaving(true);setError("");
     try{const response=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"signout"})});if(!response.ok)throw new Error("Uscita non riuscita. Riprova.");window.location.assign("/")}catch(e){setError(e instanceof Error?e.message:"Connessione non disponibile.");setSaving(false)}
   }
-  async function load(){setLoading(true);setError("");try{const r=await fetch("/api/tasks",{cache:"no-store"});const d=await r.json() as {error?:string;tasks?:Task[];areaSettings?:AreaSettings};if(!r.ok)throw new Error(d.error||"Caricamento non riuscito");setTasks(d.tasks??[]);setAreaSettings(d.areaSettings??{})}catch(e){setError(e instanceof Error?e.message:"Errore di caricamento")}finally{setLoading(false)}}
-  useEffect(()=>{void load()},[]);
+  async function load(silent=false){if(!silent){setLoading(true);setError("")}try{const r=await fetch("/api/tasks",{cache:"no-store"});const d=await r.json() as {error?:string;tasks?:Task[];areaSettings?:AreaSettings};if(!r.ok)throw new Error(d.error||"Caricamento non riuscito");setTasks(d.tasks??[]);setAreaSettings(d.areaSettings??{})}catch(e){setError(e instanceof Error?e.message:"Errore di caricamento")}finally{if(!silent)setLoading(false)}}
+  useEffect(()=>{if(!initialTasks)void load()},[]);
   useEffect(()=>{
     if(!modal&&!mobileMenu&&!areaModal)return;
     const previous=document.body.style.overflow;
@@ -41,9 +42,28 @@ export function Dashboard({displayName}:{displayName:string}) {
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==="Escape"){setAreaMenu(null);setTaskMenu(null)}};window.addEventListener("keydown",close);return()=>window.removeEventListener("keydown",close)},[]);
   const open=activeTasks.filter(t=>t.status!=="Completato"), done=activeTasks.filter(t=>t.status==="Completato");
   const filtered=useMemo(()=>tasks.filter(t=>Boolean(t.archived)===archivedTasks&&(project!=="Tutte le aree"||!areaSettings[t.project]?.archived)&&(project==="Tutte le aree"||t.project===project)&&(t.priority==="Di routine"||((status==="Tutte"||t.status===status)&&(!query||`${t.title} ${t.description} ${t.project} ${t.category}`.toLowerCase().includes(query.toLowerCase()))&&(createdRange==="Tutte le date"||new Date(t.createdAt??0).getTime()>=Date.now()-Number(createdRange)*86400000)))).sort(taskOrder),[tasks,project,status,query,createdRange,areaSettings,archivedTasks]);
-  useEffect(()=>{const refresh=()=>setTasks(items=>items.map(t=>t.priority==="Di routine"&&t.status==="Completato"&&t.completedOn!==todayInRome()?{...t,status:"Da iniziare",completedOn:null}:t));const timer=window.setInterval(refresh,30000);window.addEventListener("focus",refresh);return()=>{window.clearInterval(timer);window.removeEventListener("focus",refresh)}},[]);
+  useEffect(()=>{const refresh=()=>setTasks(items=>{let changed=false;const next=items.map(t=>{if(t.priority==="Di routine"&&t.status==="Completato"&&t.completedOn!==todayInRome()){changed=true;return {...t,status:"Da iniziare" as const,completedOn:null}}return t});return changed?next:items});const timer=window.setInterval(refresh,30000);window.addEventListener("focus",refresh);return()=>{window.clearInterval(timer);window.removeEventListener("focus",refresh)}},[]);
   function showTaskMenu(task:Task,button:HTMLButtonElement){const rect=button.getBoundingClientRect();setAreaMenu(null);setTaskMenu({task,x:Math.max(12,Math.min(rect.right-230,window.innerWidth-242)),y:Math.max(12,Math.min(rect.bottom+5,window.innerHeight-240))})}
-  function taskAction(task:Task,changes:Partial<Task>){setTaskMenu(null);void persist("PATCH",{...task,...changes})}
+  function taskAction(task:Task,changes:Partial<Task>){setTaskMenu(null);patchTask({...task,...changes})}
+  /* Updates are shown immediately and sent in the background, one request at a time per item so they reach the server in order. If one fails, the list is reloaded from the server. */
+  function enqueue<T>(key:string,send:()=>Promise<T>,onOk:(value:T,isLast:boolean)=>void,onFail:(message:string)=>void){
+    const previous=queue.current.get(key)??Promise.resolve();
+    const run:Promise<void>=previous.then(send).then(value=>onOk(value,queue.current.get(key)===run),failure=>onFail(failure instanceof Error?failure.message:"Connessione non disponibile. Riprova.")).finally(()=>{if(queue.current.get(key)===run)queue.current.delete(key)});
+    queue.current.set(key,run);
+  }
+  function sendTask(next:Task,method:"PATCH"|"POST"){
+    enqueue(next.id,async()=>{const r=await fetch("/api/tasks",{method,headers:{"content-type":"application/json"},body:JSON.stringify(next)});const d=await r.json() as {error?:string;task?:Task};if(!r.ok||!d.task)throw new Error(d.error||"Salvataggio non riuscito");return d.task},(saved,last)=>{if(last)setTasks(p=>p.map(t=>t.id===saved.id?saved:t))},message=>{setError(message);void load(true)});
+  }
+  function patchTask(change:Task){const next:Task={...change,completedOn:change.priority==="Di routine"&&change.status==="Completato"?todayInRome():null};setError("");setTasks(p=>p.map(t=>t.id===next.id?next:t));sendTask(next,"PATCH")}
+  function createTask(input:Partial<Task>){
+    if(typeof crypto==="undefined"||typeof crypto.randomUUID!=="function"){void persist("POST",input);return}
+    const task:Task={id:crypto.randomUUID(),title:(input.title??"").trim().slice(0,180),description:(input.description??"").trim().slice(0,1200),project:(input.project??"").trim().slice(0,80)||"Personale",category:(input.category??"").trim().slice(0,80),status:"Da iniziare",priority:input.priority??"Media",dueDate:input.dueDate||null,createdAt:new Date().toISOString(),isImported:false};
+    setError("");setTasks(p=>[task,...p]);sendTask(task,"POST");
+  }
+  function removeTask(id:string){
+    setError("");setTasks(p=>p.filter(t=>t.id!==id));
+    enqueue(id,async()=>{const r=await fetch("/api/tasks",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({id})});if(!r.ok){const d=await r.json().catch(()=>({})) as {error?:string};throw new Error(d.error||"Eliminazione non riuscita")}},()=>{},message=>{setError(message);void load(true)});
+  }
   async function persist(method:"POST"|"PATCH"|"DELETE",task:Partial<Task>){setSaving(true);setError("");try{const r=await fetch("/api/tasks",{method,headers:{"content-type":"application/json"},body:JSON.stringify(task)});const d=await r.json() as {error?:string;task?:Task};if(!r.ok)throw new Error(d.error||"Salvataggio non riuscito");if(method!=="DELETE"&&!d.task)throw new Error("Risposta di salvataggio non valida");if(method==="DELETE")setTasks(p=>p.filter(t=>t.id!==task.id));else if(method==="POST")setTasks(p=>[d.task as Task,...p]);else setTasks(p=>p.map(t=>t.id===(d.task as Task).id?(d.task as Task):t));setModal(false);setEditing(null)}catch(e){setError(e instanceof Error?e.message:"Errore di salvataggio")}finally{setSaving(false)}}
   function openEditor(task?:Task){setEditing(task??null);setModal(true)}
   const heading=view==="overview"?"Panoramica":project==="Tutte le aree"?"Tutte le attività":project;
@@ -52,6 +72,13 @@ export function Dashboard({displayName}:{displayName:string}) {
     const to=action==="renameProject"?window.prompt("Rinomina area di lavoro",name)?.trim():undefined;
     if(action==="renameProject"&&(!to||to===name))return;
     if(action==="deleteProject"&&!window.confirm(`Eliminare l’area “${name}” e tutte le ${tasks.filter(t=>t.project===name).length} attività al suo interno? Per conservarle puoi archiviare l’area.`))return;
+    if(action==="pinProject"||action==="archiveProject"){
+      setError("");
+      setAreaSettings(old=>({...old,[name]:{...old[name],...(action==="pinProject"?{pinned:value}:{archived:value,pinned:false})}}));
+      if(action==="archiveProject"&&project===name){setProject("Tutte le aree");setView("tasks")}
+      enqueue(`area:${name}`,async()=>{const r=await fetch("/api/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,from:name,value})});if(!r.ok){const d=await r.json().catch(()=>({})) as {error?:string};throw new Error(d.error||"Operazione non riuscita")}},()=>{},message=>{setError(message);void load(true)});
+      return;
+    }
     setAreaBusy(true);setError("");
     try{const r=await fetch("/api/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,from:name,to,value})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error||"Operazione non riuscita");
       if(action==="renameProject"){setTasks(items=>items.map(t=>t.project===name?{...t,project:to!}:t));setAreaSettings(old=>{const next={...old,[to!]:old[name]??{}};delete next[name];return next});if(project===name)setProject(to!)}
@@ -92,10 +119,10 @@ export function Dashboard({displayName}:{displayName:string}) {
               <div className="welcome-card"><div className="welcome-icon"><Sparkles size={19}/></div><div className="eyebrow">BENTORNATO</div><h2>Un passo alla volta.</h2><p>Hai <strong>{open.length} attività aperte</strong> nelle tue aree. Comincia da quella che conta di più oggi.</p><button onClick={()=>{setView("tasks");setStatus("Da iniziare")}}>Vai alle attività <ChevronRight size={16}/></button><div className="welcome-orbit orbit-one"/><div className="welcome-orbit orbit-two"/></div>
               <div className="stats-panel"><div className="stats-head"><span>Il tuo spazio</span><MoreHorizontal size={19}/></div><div className="stat-line"><div className="stat-icon blue"><ListTodo size={18}/></div><div><span>Attività aperte</span><strong>{open.length}</strong></div><span className="stat-tail">in tutte le aree</span></div><div className="stat-line"><div className="stat-icon peach"><Clock3 size={18}/></div><div><span>In corso</span><strong>{activeTasks.filter(t=>t.status==="In corso").length}</strong></div><span className="stat-tail">da portare avanti</span></div><div className="stat-line"><div className="stat-icon green"><CheckCircle2 size={18}/></div><div><span>Completate</span><strong>{done.length}</strong></div><span className="stat-tail">ottimo lavoro</span></div></div>
             </div>
-            <section className="content-card focus-card"><div className="section-head"><div><div className="section-kicker">INSERITE DI RECENTE</div><h2>Attività recenti</h2></div><button className="text-link" onClick={()=>{setView("tasks");setStatus("Tutte")}}>Vedi tutte <ChevronRight size={15}/></button></div><div className="task-list">{recent.map(t=><TaskRow key={t.id} task={t} onToggle={()=>void persist("PATCH",{...t,status:t.status==="Completato"?"Da iniziare":"Completato"})} onEdit={()=>openEditor(t)} onMenu={button=>showTaskMenu(t,button)}/>)}{recent.length===0&&<EmptyState onAdd={()=>openEditor()}/>}</div></section>
+            <section className="content-card focus-card"><div className="section-head"><div><div className="section-kicker">INSERITE DI RECENTE</div><h2>Attività recenti</h2></div><button className="text-link" onClick={()=>{setView("tasks");setStatus("Tutte")}}>Vedi tutte <ChevronRight size={15}/></button></div><div className="task-list">{recent.map(t=><TaskRow key={t.id} task={t} onToggle={()=>patchTask({...t,status:t.status==="Completato"?"Da iniziare":"Completato"})} onEdit={()=>openEditor(t)} onMenu={button=>showTaskMenu(t,button)}/>)}{recent.length===0&&<EmptyState onAdd={()=>openEditor()}/>}</div></section>
             <div className="lower-grid"><section className="content-card area-card"><div className="section-head"><div><div className="section-kicker">TUTTO A PORTATA DI MANO</div><h2>Le tue aree</h2></div><button className="icon-plain"><MoreHorizontal size={19}/></button></div><div className="area-list">{projects.slice(0,5).map((p,i)=><button key={p} className="area-item" onClick={()=>{setProject(p);setView("tasks")}}><span className={`area-icon area-${i%4}`} style={areaSettings[p]?.color?{color:areaSettings[p].color}:undefined}><Folder size={17}/></span><span className="area-title">{p}<small>{tasks.filter(t=>t.project===p&&!t.archived&&t.status!=="Completato").length} attività aperte</small></span><ChevronRight size={17}/></button>)}</div></section><section className="content-card progress-card"><div className="section-kicker">PICCOLI TRAGUARDI</div><h2>Ogni cosa al suo posto.</h2><p>Hai completato <strong>{done.length}</strong> attività. Continua con il tuo ritmo.</p><div className="progress-track"><span style={{width:`${activeTasks.length?Math.max(4,done.length/activeTasks.length*100):0}%`}}/></div><div className="progress-label"><span>Completate</span><strong>{activeTasks.length?Math.round(done.length/activeTasks.length*100):0}%</strong></div></section></div>
           </>}
-          {view==="tasks"&&<section className="content-card task-manager"><div className="filters-row"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca un’attività o un’area…"/><kbd>⌘ K</kbd></div><label className="filter-select"><SlidersHorizontal size={16}/><select value={status} onChange={e=>setStatus(e.target.value as typeof status)}>{statuses.map(s=><option key={s}>{s}</option>)}</select><ChevronDown size={14}/></label><label className="filter-select creation-filter"><Clock3 size={15}/><select value={createdRange} onChange={e=>setCreatedRange(e.target.value)}><option value="Tutte le date">Tutte le date</option><option value="7">Create negli ultimi 7 giorni</option><option value="30">Create negli ultimi 30 giorni</option><option value="90">Create negli ultimi 90 giorni</option></select><ChevronDown size={14}/></label></div><button className={`archive-tasks-toggle ${archivedTasks?"selected":""}`} onClick={()=>setArchivedTasks(v=>!v)}><Archive size={14}/>{archivedTasks?"Torna alle attività":"Attività archiviate"}</button><div className="list-subhead"><span>{filtered.length} {filtered.length===1?"attività":"attività"}</span><div className="column-labels"><span>PRIORITÀ</span><span>STATO</span></div></div><div className="task-list">{filtered.map(t=><TaskRow key={t.id} task={t} onToggle={()=>void persist("PATCH",{...t,status:t.status==="Completato"?"Da iniziare":"Completato"})} onEdit={()=>openEditor(t)} onMenu={button=>showTaskMenu(t,button)}/>)}{filtered.length===0&&<EmptyState onAdd={()=>openEditor()}/>}</div></section>}
+          {view==="tasks"&&<section className="content-card task-manager"><div className="filters-row"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca un’attività o un’area…"/><kbd>⌘ K</kbd></div><label className="filter-select"><SlidersHorizontal size={16}/><select value={status} onChange={e=>setStatus(e.target.value as typeof status)}>{statuses.map(s=><option key={s}>{s}</option>)}</select><ChevronDown size={14}/></label><label className="filter-select creation-filter"><Clock3 size={15}/><select value={createdRange} onChange={e=>setCreatedRange(e.target.value)}><option value="Tutte le date">Tutte le date</option><option value="7">Create negli ultimi 7 giorni</option><option value="30">Create negli ultimi 30 giorni</option><option value="90">Create negli ultimi 90 giorni</option></select><ChevronDown size={14}/></label></div><button className={`archive-tasks-toggle ${archivedTasks?"selected":""}`} onClick={()=>setArchivedTasks(v=>!v)}><Archive size={14}/>{archivedTasks?"Torna alle attività":"Attività archiviate"}</button><div className="list-subhead"><span>{filtered.length} {filtered.length===1?"attività":"attività"}</span><div className="column-labels"><span>PRIORITÀ</span><span>STATO</span></div></div><div className="task-list">{filtered.map(t=><TaskRow key={t.id} task={t} onToggle={()=>patchTask({...t,status:t.status==="Completato"?"Da iniziare":"Completato"})} onEdit={()=>openEditor(t)} onMenu={button=>showTaskMenu(t,button)}/>)}{filtered.length===0&&<EmptyState onAdd={()=>openEditor()}/>}</div></section>}
         </>}
         <footer className="page-footer">Todly <span>·</span> Le tue attività restano private e si salvano automaticamente.</footer>
       </div>
@@ -109,7 +136,7 @@ export function Dashboard({displayName}:{displayName:string}) {
       <label className="move-task-label"><span><ArrowRightLeft size={15}/>Sposta in un’altra area</span><select aria-label="Area di destinazione" value="" disabled={saving} onChange={e=>{if(e.target.value)taskAction(taskMenu.task,{project:e.target.value})}}><option value="" disabled>Scegli area…</option>{projects.filter(p=>p!==taskMenu.task.project).map(p=><option key={p}>{p}</option>)}</select></label>
       <button role="menuitem" autoFocus disabled={saving} onClick={()=>taskAction(taskMenu.task,{pinned:!taskMenu.task.pinned})}>{taskMenu.task.pinned?<PinOff size={15}/>:<Pin size={15}/>} {taskMenu.task.pinned?"Rimuovi dall’alto":"Fissa in alto"}</button>
       <button role="menuitem" disabled={saving} onClick={()=>taskAction(taskMenu.task,{archived:!taskMenu.task.archived})}>{taskMenu.task.archived?<ArchiveRestore size={15}/>:<Archive size={15}/>} {taskMenu.task.archived?"Ripristina attività":"Archivia attività"}</button>
-      <button role="menuitem" className="delete-area" disabled={saving} onClick={()=>{const task=taskMenu.task;setTaskMenu(null);if(window.confirm(`Eliminare l’attività “${task.title}”?`))void persist("DELETE",{id:task.id})}}><Trash2 size={15}/>Elimina attività</button>
+      <button role="menuitem" className="delete-area" disabled={saving} onClick={()=>{const task=taskMenu.task;setTaskMenu(null);if(window.confirm(`Eliminare l’attività “${task.title}”?`))removeTask(task.id)}}><Trash2 size={15}/>Elimina attività</button>
     </div></>}
     {areaModal&&<AreaModal busy={areaBusy} onClose={()=>{if(!areaBusy)setAreaModal(false)}} onCreate={async(name,color)=>{
       setAreaBusy(true);
@@ -120,7 +147,7 @@ export function Dashboard({displayName}:{displayName:string}) {
         setAreaSettings(old=>({...old,[data.project!]:data.settings!}));setProject(data.project);setView("tasks");setStatus("Tutte");setQuery("");setCreatedRange("Tutte le date");setArchivedTasks(false);setMobileMenu(false);setAreaModal(false);
       } finally {setAreaBusy(false)}
     }}/>}
-    {modal&&<TaskModal task={editing} defaultProject={view==="tasks"&&project!=="Tutte le aree"?project:"Personale"} projects={projects} saving={saving} onClose={()=>{setModal(false);setEditing(null)}} onSave={task=>void persist(editing?"PATCH":"POST",editing?{...editing,...task}:task)}/>}
+    {modal&&<TaskModal task={editing} defaultProject={view==="tasks"&&project!=="Tutte le aree"?project:"Personale"} projects={projects} saving={saving} onClose={()=>{setModal(false);setEditing(null)}} onSave={task=>{if(editing)patchTask({...editing,...task} as Task);else createTask(task);setModal(false);setEditing(null)}}/>}
   </main>;
 }
 
