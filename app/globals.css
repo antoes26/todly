@@ -89,3 +89,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 .color-picker{position:relative;justify-self:start}.color-trigger{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 11px 0 9px;border:1px solid #e3e8eb;border-radius:8px;background:white;color:#43515a;cursor:pointer;font:inherit}.color-trigger:disabled{cursor:default;opacity:.6}.color-trigger>span{width:21px;height:21px;border-radius:50%;box-shadow:inset 0 0 0 1px #0000001a}.color-trigger code{font-size:12px;font-family:inherit;color:#697781}
 .color-popover{position:fixed;z-index:40;top:0;left:0;display:grid;gap:12px;padding:12px;border:1px solid #e6ebee;border-radius:10px;background:white;box-shadow:0 10px 30px #24394318;width:max-content;max-width:calc(100vw - 16px)}.color-swatches{display:grid;grid-template-columns:repeat(6,30px);gap:8px}.color-swatches button{width:30px;height:30px;border:0;border-radius:50%;cursor:pointer;display:grid;place-items:center;color:white;box-shadow:inset 0 0 0 1px #0000001a}.color-swatches button.is-selected{outline:2px solid #43515a;outline-offset:2px}.color-hex{display:grid;gap:6px;font-size:12px;color:#697781;font-weight:550}.color-hex input{height:34px}
+
+/* Compact area color selector: swatch and dropdown only */
+.color-trigger{gap:6px;width:51px;min-width:51px;padding:0 7px;justify-content:center}
+.color-trigger>span{flex:none}
