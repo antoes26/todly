@@ -93,3 +93,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* Compact area color selector: swatch and dropdown only */
 .color-trigger{gap:6px;width:51px;min-width:51px;padding:0 7px;justify-content:center}
 .color-trigger>span{flex:none}
+
+/* Keep the single Add task action visible on mobile after removing the topbar duplicate. */
+@media(max-width:760px){
+  .page-heading{flex-wrap:wrap}
+  .page-heading>.primary-button{display:inline-flex;flex:none;min-height:44px;white-space:nowrap}
+}
