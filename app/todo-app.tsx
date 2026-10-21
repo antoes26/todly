@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { exportTasksXlsx } from "./export-xlsx";
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, Clock3, Download, Folder, LayoutDashboard, ListTodo, LogOut, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Archive, ArchiveRestore, Trash2, Repeat2, ArrowRightLeft, Pencil, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 type Task = { id:string; title:string; description:string; project:string; category:string; status:"Da iniziare"|"In corso"|"Completato"; priority:"Alta"|"Media"|"Bassa"|"Di routine"; dueDate:string|null; sourceDate?:string|null; createdAt?:string; isImported?:boolean; pinned?:boolean; archived?:boolean; completedOn?:string|null };
@@ -111,7 +112,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings}:{displa
     <section className="main-area">
       <header className="topbar"><button className="menu-toggle" onClick={()=>setMobileMenu(true)} aria-label="Apri menu"><Menu size={20}/></button><div className="breadcrumb">Il mio spazio <ChevronRight size={15}/><span>{heading}</span></div><div className="top-actions"><div className="top-date"><CalendarDays size={16}/>{today}</div></div></header>
       <div className="workspace">
-        <div className="page-heading"><div><div className="eyebrow muted-eyebrow">{view==="overview"?today.toUpperCase():"IL TUO LAVORO, IN ORDINE"}</div><h1>{heading}</h1><p>{view==="overview"?"Una vista chiara di quello che hai in corso.":"Ritrova tutto, senza dover cercare tra i fogli."}</p></div><button className="primary-button add-task-button" aria-label="Aggiungi attività" title="Aggiungi attività" onClick={()=>openEditor()}><Plus size={17} aria-hidden="true"/><span className="add-task-label">Aggiungi attività</span></button><button type="button" className="export-button" aria-label="Esporta attività" title="Esporta attività"><Download size={17} aria-hidden="true"/><span>Esporta</span></button></div>
+        <div className="page-heading"><div><div className="eyebrow muted-eyebrow">{view==="overview"?today.toUpperCase():"IL TUO LAVORO, IN ORDINE"}</div><h1>{heading}</h1><p>{view==="overview"?"Una vista chiara di quello che hai in corso.":"Ritrova tutto, senza dover cercare tra i fogli."}</p></div><button className="primary-button add-task-button" aria-label="Aggiungi attività" title="Aggiungi attività" onClick={()=>openEditor()}><Plus size={17} aria-hidden="true"/><span className="add-task-label">Aggiungi attività</span></button><button type="button" className="export-button" aria-label="Esporta attività" title="Esporta attività" onClick={() => exportTasksXlsx(tasks)}><Download size={17} aria-hidden="true"/><span>Esporta</span></button></div>
         {error&&<div className="error-banner"><span>{error}</span><button onClick={()=>void load()}>Riprova</button><button aria-label="Chiudi" onClick={()=>setError("")}><X size={16}/></button></div>}
         {loading?<div className="loading-card"><span className="loader"/> Sto preparando le tue attività…</div>:<>
           {view==="overview"&&<>
