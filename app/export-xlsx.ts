@@ -24,7 +24,7 @@ function crc32(bytes: Uint8Array): number {
 
 function zip(files: Array<{ name: string; content: string }>): Blob {
   const parts: BlobPart[] = [];
-  const central: Uint8Array[] = [];
+  const central: Uint8Array<ArrayBuffer>[] = [];
   let offset = 0;
   const u16 = (view: DataView, at: number, value: number) => view.setUint16(at, value, true);
   const u32 = (view: DataView, at: number, value: number) => view.setUint32(at, value, true);
@@ -58,7 +58,7 @@ function zip(files: Array<{ name: string; content: string }>): Blob {
 
 function dateText(value?: string | null): string {
   if (!value) return "";
-  const match = value.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
 }
 
