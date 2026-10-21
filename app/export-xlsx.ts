@@ -90,12 +90,17 @@ export function exportTasksXlsx(tasks: ExportTask[]): void {
     { name: "xl/worksheets/sheet1.xml", content: sheet }
   ];
   const blob = zip(files);
+  // Keep the download URL alive long enough for browsers to begin saving the file.
+  // In particular, revoking it immediately can cancel a download.
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = `Todly_Attivita_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  link.style.display = "none";
   document.body.appendChild(link);
   link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 60_000);
 }
