@@ -28,9 +28,21 @@ export async function POST(request: Request) {
       if (!name) return json({error:"Inserisci il nome del progetto."},{status:400});
       const state = await readState(user.userId);
       if (state.projects.some(p=>p.name.toLocaleLowerCase("it")===name.toLocaleLowerCase("it"))) return json({error:"Progetto già presente."},{status:409});
-      const item = {kind:"todlyProject",id:crypto.randomUUID(),name,description:"",createdAt:new Date().toISOString()};
+      const item = {kind:"todlyProject",id:crypto.randomUUID(),name,description:"",areaNames:[] as string[],createdAt:new Date().toISOString()};
       await metadataStatement(user.userId,`todly-project:${item.id}`,item).run();
       return json({project:item},{status:201});
+    }
+    if (payload.action === "addAreaToTodlyProject" || payload.action === "removeAreaFromTodlyProject") {
+      const state = await readState(user.userId);
+      const item = state.projects.find(p=>p.id===payload.id);
+      const area = typeof payload.from === "string" ? payload.from.trim() : "";
+      if (!item) return json({error:"Progetto non trovato."},{status:404});
+      if (!area || (!state.tasks.some(t=>t.project===area) && !Object.hasOwn(state.settings,area)) || state.settings[area]?.deleted) return json({error:"Area non trovata."},{status:404});
+      const existing = item.areaNames??[];
+      const areaNames = payload.action==="addAreaToTodlyProject" ? [...new Set([...existing,area])] : existing.filter(n=>n!==area);
+      const updated = {...item,kind:"todlyProject",areaNames};
+      await metadataStatement(user.userId,`todly-project:${item.id}`,updated).run();
+      return json({project:updated});
     }
     if (payload.action === "deleteTodlyProject") {
       const state = await readState(user.userId);
