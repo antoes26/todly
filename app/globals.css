@@ -150,3 +150,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .todly-project-child-row.active>.todly-project-child{color:#151515;font-weight:600}
 .breadcrumb .breadcrumb-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer}
 .breadcrumb .breadcrumb-link:hover{text-decoration:underline;color:#222}
+
+/* Project creation dialog, visually consistent with ChatGPT-style project setup. */
+.todly-create-project-modal{width:min(510px,calc(100vw - 32px));padding:22px 20px 20px;border-radius:16px}
+.todly-create-project-modal .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+.todly-create-project-modal .modal-head h2{font-size:20px;font-weight:500;letter-spacing:-.3px;margin:0}
+.todly-create-project-modal .form-label{display:block;margin-bottom:9px;font-size:14px;font-weight:500}
+.todly-project-name-field{display:flex;align-items:center;gap:10px;border:1px solid #d7dce5;border-radius:9px;padding:0 12px;min-height:45px}
+.todly-project-name-field:focus-within{border-color:#5c88f5;box-shadow:0 0 0 1px #5c88f5}
+.todly-project-name-field svg{flex-shrink:0;color:#404040}
+.todly-project-name-field input{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;flex:1;min-width:0;font:inherit;font-size:14px;height:43px}
+.todly-project-modal-footer{display:flex;justify-content:flex-end;margin-top:24px}
+.todly-project-modal-footer .primary-button{border-radius:999px;padding:11px 20px;min-width:120px}
+.todly-project-modal-footer .primary-button:disabled{opacity:.4;cursor:not-allowed}
