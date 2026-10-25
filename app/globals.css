@@ -144,3 +144,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .todly-project-child-row>.todly-project-child:hover{background:transparent!important}
 .todly-project-child-row>.todly-project-child-options{display:flex!important;flex:0 0 28px!important;align-items:center;justify-content:center;width:28px!important;height:32px;margin:0!important;padding:0!important;background:transparent!important;border:0!important;opacity:0;visibility:hidden;transition:opacity .15s}
 .todly-project-child-row:hover>.todly-project-child-options,.todly-project-child-row:focus-within>.todly-project-child-options{opacity:1;visibility:visible}
+
+/* Active nested area remains visible while browsing its tasks. */
+.todly-project-child-row.active,.todly-project-child-row.active:hover{background:#ececec}
+.todly-project-child-row.active>.todly-project-child{color:#151515;font-weight:600}
+.breadcrumb .breadcrumb-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer}
+.breadcrumb .breadcrumb-link:hover{text-decoration:underline;color:#222}
