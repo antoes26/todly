@@ -130,3 +130,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .todly-project-member{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#f6f6f6;border-radius:7px;font-size:12px}
 .todly-project-member button{display:grid;place-items:center;background:none;border:0;color:#888;cursor:pointer}
 @media(max-width:760px){.sidebar .project-nav[aria-label="Progetti"]{max-height:30vh}}
+
+.todly-project-child-row{display:flex;align-items:center;min-width:0;border-radius:7px}
+.todly-project-child-row:hover{background:#f0f0f0}
+.todly-project-child-row .todly-project-child{flex:1;min-width:0}
+.todly-project-child-options{flex:none;width:27px;height:30px;display:grid;place-items:center;border:0;background:transparent;color:#888;border-radius:6px;cursor:pointer}
+.todly-project-child-options:hover{background:#e8e8e8}
