@@ -49,6 +49,21 @@ export async function POST(request: Request) {
       await database().batch(statements);
       return json({project:updated});
     }
+    if (["renameTodlyProject","pinTodlyProject","archiveTodlyProject"].includes(payload.action??"")) {
+      const state = await readState(user.userId);
+      const item = state.projects.find(p=>p.id===payload.id);
+      if (!item) return json({error:"Progetto non trovato."},{status:404});
+      let updated = {...item,kind:"todlyProject"};
+      if (payload.action==="renameTodlyProject") {
+        const name=typeof payload.name==="string"?payload.name.trim():"";
+        if (!name || name.length>80) return json({error:"Nome non valido (massimo 80 caratteri)."},{status:400});
+        if (state.projects.some(p=>p.id!==item.id&&p.name.toLocaleLowerCase("it")===name.toLocaleLowerCase("it"))) return json({error:"Esiste già un progetto con questo nome."},{status:409});
+        updated={...updated,name};
+      } else if (payload.action==="pinTodlyProject") updated={...updated,pinned:payload.value===true};
+      else updated={...updated,archived:payload.value===true,pinned:payload.value===true?false:item.pinned};
+      await metadataStatement(user.userId,`todly-project:${item.id}`,updated).run();
+      return json({project:updated});
+    }
     if (payload.action === "deleteTodlyProject") {
       const state = await readState(user.userId);
       const item = state.projects.find(p=>p.id===payload.id);
