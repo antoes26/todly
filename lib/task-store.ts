@@ -12,7 +12,7 @@ export async function save(userId: string, task: Task, id = task.id) {
     .bind(`${userId}:${id}`, userId, JSON.stringify(task), new Date().toISOString()).run();
 }
 
-export type TodlyProject = { id: string; name: string; description: string; createdAt: string; deleted?: boolean };
+export type TodlyProject = { id: string; name: string; description: string; createdAt: string; areaNames?: string[]; deleted?: boolean };
 export type AreaSettings = { pinned?: boolean; archived?: boolean; deleted?: boolean; color?: string };
 export async function readState(userId: string) {
   const result = await database().prepare("SELECT payload, updated_at FROM task_records WHERE user_id = ?").bind(userId).all<{ payload: string; updated_at: string }>();
