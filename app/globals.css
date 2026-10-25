@@ -114,3 +114,19 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .export-button{height:39px;padding:0 15px;margin-left:-10px;background:#fff;color:#171717;border:1px solid #e5e5e5;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:550;flex:none;transition:background .15s,border-color .15s}
 .export-button:hover{background:#f7f7f7;border-color:#d9d9d9}
 @media(max-width:760px){.page-heading>.export-button{display:none}}
+
+/* Project collections sit immediately above work areas, with a single scrolling area list. */
+.sidebar .project-nav[aria-label="Progetti"]{flex:0 0 auto;overflow:visible;padding-bottom:0;margin-top:6px;max-height:34vh;overflow-y:auto}
+.sidebar .project-nav[aria-label="Progetti"] + .projects-label{margin-top:15px}
+.sidebar .project-nav[aria-label="Aree di lavoro"]{flex:1 1 auto;min-height:0;margin-top:6px}
+.todly-project-group{display:flex;flex-direction:column;gap:2px}
+.todly-project-children{padding:0 0 5px 23px;display:flex;flex-direction:column;gap:2px}
+.todly-project-child,.todly-project-add{border:0;background:transparent;text-align:left;display:flex;align-items:center;gap:9px;color:#666;border-radius:7px;padding:8px 9px;font-size:12px;min-height:32px}
+.todly-project-child:hover,.todly-project-add:hover{background:#f0f0f0}
+.todly-project-child span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todly-project-area-manager{padding:12px 20px 18px;border-bottom:1px solid #eee}
+.todly-project-area-manager .form-label{max-width:390px}
+.todly-project-members{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.todly-project-member{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#f6f6f6;border-radius:7px;font-size:12px}
+.todly-project-member button{display:grid;place-items:center;background:none;border:0;color:#888;cursor:pointer}
+@media(max-width:760px){.sidebar .project-nav[aria-label="Progetti"]{max-height:30vh}}
