@@ -21,7 +21,7 @@ export async function GET() {
   if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
     const state = await (early && peekId === user.userId ? early : readState(user.userId));
-    return json({ userId: user.userId, displayName: user.fullName ?? user.email, tasks: state.tasks, areaSettings: state.settings, projects: state.projects },
+    return json({ userId: user.userId, displayName: user.fullName ?? user.email, tasks: state.tasks, areaSettings: state.settings, projects: state.projects, areaOrder: state.areaOrder },
       { headers: { "Server-Timing": `auth;dur=${authMs}, total;dur=${Date.now() - started}` } });
   } catch (error) { console.error("TodlyCodex tasks unavailable", error); return json({ error: "Non riesco a caricare le attività. Riprova tra poco." }, { status: 503 }); }
 }
@@ -29,7 +29,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
-    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean; color?: string; id?: string };
+    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean; color?: string; id?: string; order?: unknown; index?: unknown };
     if (payload.action === "createTodlyProject") {
       const name = typeof payload.name === "string" ? payload.name.trim().slice(0,80) : "";
       if (!name) return json({error:"Inserisci il nome del progetto."},{status:400});
@@ -47,7 +47,10 @@ export async function POST(request: Request) {
       if (!area || (!state.tasks.some(t=>t.project===area) && !Object.hasOwn(state.settings,area)) || state.settings[area]?.deleted) return json({error:"Area non trovata."},{status:404});
       const existing = item.areaNames??[];
       const adding = payload.action==="addAreaToTodlyProject";
-      const areaNames = adding ? [...new Set([...existing,area])] : existing.filter(n=>n!==area);
+      // Optional position (drag and drop): the area is placed at that index, also when it is already in the project.
+      const without = existing.filter(n=>n!==area);
+      const index = typeof payload.index==="number"&&Number.isInteger(payload.index) ? Math.max(0,Math.min(payload.index,without.length)) : null;
+      const areaNames = !adding ? without : index===null ? (existing.includes(area) ? existing : [...existing,area]) : [...without.slice(0,index),area,...without.slice(index)];
       // An area belongs to at most one project: moving it removes the previous membership.
       const statements = state.projects.filter(p=>p.id!==item.id && adding && (p.areaNames??[]).includes(area))
         .map(p=>metadataStatement(user.userId,`todly-project:${p.id}`,{...p,kind:"todlyProject",areaNames:(p.areaNames??[]).filter(n=>n!==area)}));
@@ -55,6 +58,12 @@ export async function POST(request: Request) {
       statements.push(metadataStatement(user.userId,`todly-project:${item.id}`,updated));
       await database().batch(statements);
       return json({project:updated});
+    }
+    if (payload.action === "reorderAreas") {
+      if (!Array.isArray(payload.order) || payload.order.length > 1000) return json({error:"Ordine non valido."},{status:400});
+      const order = [...new Set(payload.order.filter((n): n is string => typeof n === "string").map(n=>n.trim()).filter(n=>n && n.length<=80))];
+      await metadataStatement(user.userId,"area-order",{kind:"areaOrder",order}).run();
+      return json({areaOrder:order});
     }
     if (["renameTodlyProject","pinTodlyProject","archiveTodlyProject"].includes(payload.action??"")) {
       const state = await readState(user.userId);
