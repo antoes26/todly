@@ -179,3 +179,22 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .todly-project-entry>.project-select{min-height:44px;touch-action:manipulation}
   .todly-project-child,.todly-project-child-options{min-height:44px;touch-action:manipulation}
 }
+
+/* Nested work areas: make every action immediately tappable on touch devices. */
+@media(hover:none), (pointer:coarse){
+  .todly-project-child-row:hover{background:transparent}
+  .todly-project-child-row:focus-within{background:#ededed}
+  .todly-project-child-row>.todly-project-child-options{
+    opacity:1!important;
+    visibility:visible!important;
+    flex:0 0 44px!important;
+    width:44px!important;
+    height:44px!important;
+    min-height:44px;
+    touch-action:manipulation;
+  }
+  .todly-project-child-row>.todly-project-child{
+    min-height:44px;
+    touch-action:manipulation;
+  }
+}
