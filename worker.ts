@@ -3,6 +3,21 @@ import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@s
 import { readAuthConfig, isSameOriginWrite } from "./lib/auth-config";
 import { runWithAuth } from "./lib/auth-context";
 
+/** Reads the user id from the Supabase session cookie WITHOUT verifying it. Used only to start reading data in parallel with the real check. */
+function peekSessionUserId(jar: Map<string, string>): string | null {
+  try {
+    const parts = [...jar.keys()].filter(name => /^sb-.+-auth-token(\.\d+)?$/.test(name)).sort((a, b) => Number(a.split(".").pop()) - Number(b.split(".").pop()));
+    if (!parts.length) return null;
+    let raw = parts.map(name => jar.get(name) ?? "").join("");
+    const fromB64 = (value: string) => atob(value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "="));
+    if (raw.startsWith("base64-")) raw = new TextDecoder().decode(Uint8Array.from(fromB64(raw.slice(7)), c => c.charCodeAt(0)));
+    const token = JSON.parse(raw)?.access_token;
+    if (typeof token !== "string") return null;
+    const sub = JSON.parse(fromB64(token.split(".")[1] ?? ""))?.sub;
+    return typeof sub === "string" ? sub : null;
+  } catch { return null; }
+}
+
 export default {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
     const config = readAuthConfig(env as unknown as Record<string, unknown>, request.url);
@@ -26,7 +41,7 @@ export default {
         },
       },
     }) : null;
-    const response = await runWithAuth({ client, config }, () => handler.fetch(request, env, ctx));
+    const response = await runWithAuth({ client, config, peekUserId: url.pathname === "/" ? peekSessionUserId(jar) : null }, () => handler.fetch(request, env, ctx));
     const headers = new Headers(response.headers);
     for (const cookie of outgoingCookies) headers.append("Set-Cookie", cookie);
     if (protectedPath || outgoingCookies.length) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { exportTasksXlsx } from "./export-xlsx";
+import { useSwipeMenu } from "./use-swipe-menu";
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, Clock3, Download, Folder, LayoutDashboard, ListTodo, LogOut, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Archive, ArchiveRestore, Trash2, Repeat2, ArrowRightLeft, Pencil, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 type TodlyProject = {id:string;name:string;description:string;createdAt:string;areaNames?:string[];pinned?:boolean;archived?:boolean};
@@ -25,6 +26,8 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
   const [todlyProjects,setTodlyProjects]=useState<TodlyProject[]>(initialProjects??[]),[selectedProject,setSelectedProject]=useState<string|null>(null),[collapsedTodlyProjects,setCollapsedTodlyProjects]=useState<string[]>([]),[mobileExpandedProjectId,setMobileExpandedProjectId]=useState<string|null>(null),[creatingProject,setCreatingProject]=useState(false);
   const [error,setError]=useState(""), [saving,setSaving]=useState(false);
   const queue=useRef(new Map<string,Promise<void>>());
+  const sidebarRef=useRef<HTMLElement|null>(null);
+  useSwipeMenu(sidebarRef,mobileMenu,setMobileMenu,modal||areaModal||projectModal||Boolean(areaMenu||taskMenu||todlyProjectMenu));
   async function signOut(){
     if(saving)return;
     setSaving(true);setError("");
@@ -125,7 +128,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
   const recent=useMemo(()=>{const ordered=tasks.filter(t=>!t.archived&&!areaSettings[t.project]?.archived).sort(taskOrder);return [...ordered.filter(t=>t.priority==="Di routine"||t.pinned),...ordered.filter(t=>t.priority!=="Di routine"&&!t.pinned).slice(0,6)].sort(taskOrder)},[tasks,areaSettings]);
   const today=new Intl.DateTimeFormat("it-IT",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
   return <main className={`app-shell ${sidebarCollapsed?"sidebar-collapsed":""}`}>
-    <aside className={`sidebar ${mobileMenu?"mobile-open":""}`}>
+    <aside ref={sidebarRef} className={`sidebar ${mobileMenu?"mobile-open":""}`}>
       <div className="sidebar-brand"><button className="brand-home" onClick={()=>{setView("overview");setProject("Tutte le aree");setMobileMenu(false)}} aria-label="Todly, vai alla home"><span className="brand-mark"><span className="brand-check">✓</span></span><span className="brand-title">Todly</span></button><button className="collapse-toggle" onClick={()=>setSidebarCollapsed(v=>!v)} aria-label={sidebarCollapsed?"Espandi menu":"Comprimi menu"} title={sidebarCollapsed?"Espandi menu":"Comprimi menu"}>{sidebarCollapsed?<PanelLeftOpen size={17}/>:<PanelLeftClose size={17}/>}</button><button className="mobile-close" onClick={()=>setMobileMenu(false)} aria-label="Chiudi menu"><X size={18}/></button></div>
       <div className="side-label">SPAZIO PERSONALE</div>
       <nav className="side-nav">

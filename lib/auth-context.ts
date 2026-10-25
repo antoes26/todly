@@ -7,6 +7,8 @@ type AuthContext = {
   client: SupabaseClient | null;
   config: AuthConfig | null;
   user?: Promise<AppUser | null>;
+  /** Unverified user id read from the session cookie. Only a hint to start loading data early: never use it without getAppUser() confirming the same id. */
+  peekUserId?: string | null;
 };
 const context = new AsyncLocalStorage<AuthContext>();
 
