@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Dashboard } from "./todo-app";
 import { AuthPanel } from "./auth-panel";
 
-type Loaded = { userId: string; displayName: string; tasks: never[]; areaSettings: Record<string, never>; projects: never[] };
+type Loaded = { userId: string; displayName: string; tasks: never[]; areaSettings: Record<string, never>; projects: never[]; areaOrder?: string[] };
 type BootState = { kind: "loading" } | { kind: "ready"; data: Loaded } | { kind: "signin" } | { kind: "error"; message: string };
 
 /* Ask for the tasks as soon as this code arrives in the browser, even before the page finishes starting up. */
@@ -30,7 +30,7 @@ export function AppBoot() {
   }, []);
   if (state.kind === "ready") {
     const d = state.data;
-    return <Dashboard key={d.userId} displayName={d.displayName} initialTasks={d.tasks} initialAreaSettings={d.areaSettings} initialProjects={d.projects} />;
+    return <Dashboard key={d.userId} displayName={d.displayName} initialTasks={d.tasks} initialAreaSettings={d.areaSettings} initialProjects={d.projects} initialAreaOrder={d.areaOrder} />;
   }
   if (state.kind === "signin") return <AuthPanel configured />;
   return <div className="boot-splash" role="status" aria-live="polite">

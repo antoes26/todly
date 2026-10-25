@@ -17,18 +17,21 @@ export type AreaSettings = { pinned?: boolean; archived?: boolean; deleted?: boo
 export async function readState(userId: string) {
   const result = await database().prepare("SELECT payload, updated_at FROM task_records WHERE user_id = ?").bind(userId).all<{ payload: string; updated_at: string }>();
   const changes = new Map<string, { task: Task; updatedAt: string }>(), renames = new Map<string, string>();
-  const settings: Record<string, AreaSettings> = Object.create(null); const projects: TodlyProject[] = [];
+  const settings: Record<string, AreaSettings> = Object.create(null); const projects: TodlyProject[] = []; let savedOrder: string[] = [];
   for (const row of result.results ?? []) try {
     const parsed = JSON.parse(row.payload);
     if (parsed.kind === "todlyProject" && parsed.id) { if (!parsed.deleted) projects.push(parsed as TodlyProject); }
     else if (parsed.kind === "sectionRename" && parsed.from && parsed.to) renames.set(parsed.from, parsed.to);
     else if (parsed.kind === "areaSettings" && parsed.name) settings[parsed.name] = parsed.settings;
+    else if (parsed.kind === "areaOrder" && Array.isArray(parsed.order)) savedOrder = parsed.order.filter((n: unknown): n is string => typeof n === "string");
     else if (parsed.id) changes.set(parsed.id, { task: parsed, updatedAt: row.updated_at });
   } catch { /* Keep intact imported records available. */ }
   const resolve = (name: string) => { const seen = new Set<string>(); let value = name; while (renames.has(value) && !seen.has(value)) { seen.add(value); value = renames.get(value)!; } return value; };
   const tasks = new Map<string, Task>();
   for (const [id, saved] of changes) if (!saved.task.deleted) tasks.set(id, { ...saved.task, createdAt: saved.task.createdAt || saved.updatedAt, project: resolve(saved.task.project) });
-  return { projects, tasks: [...tasks.values()].filter(t => !settings[t.project]?.deleted).map(t => t.priority === "Di routine" && t.status === "Completato" && t.completedOn !== todayInRome() ? { ...t, status: "Da iniziare" as const, completedOn: null } : t), settings, renames, resolve };
+  // Custom order of the work areas chosen by drag and drop; renamed areas keep their place.
+  const areaOrder = [...new Set(savedOrder.map(resolve))];
+  return { areaOrder, projects, tasks: [...tasks.values()].filter(t => !settings[t.project]?.deleted).map(t => t.priority === "Di routine" && t.status === "Completato" && t.completedOn !== todayInRome() ? { ...t, status: "Da iniziare" as const, completedOn: null } : t), settings, renames, resolve };
 }
 export function metadataStatement(userId: string, key: string, payload: unknown) {
   return database().prepare("INSERT INTO task_records (key, user_id, payload, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at")
