@@ -15,14 +15,62 @@ export async function GET() {
   if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
     const state = await readState(user.userId);
-    return json({ tasks: state.tasks, areaSettings: state.settings });
+    return json({ tasks: state.tasks, areaSettings: state.settings, projects: state.projects });
   } catch (error) { console.error("TodlyCodex tasks unavailable", error); return json({ error: "Non riesco a caricare le attività. Riprova tra poco." }, { status: 503 }); }
 }
 
 export async function POST(request: Request) {
   const user = await getAppUser(); if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
-    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean; color?: string };
+    const payload = await request.json() as Partial<Task> & { action?: string; from?: string; to?: string; name?: string; value?: boolean; color?: string; id?: string };
+    if (payload.action === "createTodlyProject") {
+      const name = typeof payload.name === "string" ? payload.name.trim().slice(0,80) : "";
+      if (!name) return json({error:"Inserisci il nome del progetto."},{status:400});
+      const state = await readState(user.userId);
+      if (state.projects.some(p=>p.name.toLocaleLowerCase("it")===name.toLocaleLowerCase("it"))) return json({error:"Progetto già presente."},{status:409});
+      const item = {kind:"todlyProject",id:crypto.randomUUID(),name,description:"",areaNames:[] as string[],createdAt:new Date().toISOString()};
+      await metadataStatement(user.userId,`todly-project:${item.id}`,item).run();
+      return json({project:item},{status:201});
+    }
+    if (payload.action === "addAreaToTodlyProject" || payload.action === "removeAreaFromTodlyProject") {
+      const state = await readState(user.userId);
+      const item = state.projects.find(p=>p.id===payload.id);
+      const area = typeof payload.from === "string" ? payload.from.trim() : "";
+      if (!item) return json({error:"Progetto non trovato."},{status:404});
+      if (!area || (!state.tasks.some(t=>t.project===area) && !Object.hasOwn(state.settings,area)) || state.settings[area]?.deleted) return json({error:"Area non trovata."},{status:404});
+      const existing = item.areaNames??[];
+      const adding = payload.action==="addAreaToTodlyProject";
+      const areaNames = adding ? [...new Set([...existing,area])] : existing.filter(n=>n!==area);
+      // An area belongs to at most one project: moving it removes the previous membership.
+      const statements = state.projects.filter(p=>p.id!==item.id && adding && (p.areaNames??[]).includes(area))
+        .map(p=>metadataStatement(user.userId,`todly-project:${p.id}`,{...p,kind:"todlyProject",areaNames:(p.areaNames??[]).filter(n=>n!==area)}));
+      const updated = {...item,kind:"todlyProject",areaNames};
+      statements.push(metadataStatement(user.userId,`todly-project:${item.id}`,updated));
+      await database().batch(statements);
+      return json({project:updated});
+    }
+    if (["renameTodlyProject","pinTodlyProject","archiveTodlyProject"].includes(payload.action??"")) {
+      const state = await readState(user.userId);
+      const item = state.projects.find(p=>p.id===payload.id);
+      if (!item) return json({error:"Progetto non trovato."},{status:404});
+      let updated = {...item,kind:"todlyProject"};
+      if (payload.action==="renameTodlyProject") {
+        const name=typeof payload.name==="string"?payload.name.trim():"";
+        if (!name || name.length>80) return json({error:"Nome non valido (massimo 80 caratteri)."},{status:400});
+        if (state.projects.some(p=>p.id!==item.id&&p.name.toLocaleLowerCase("it")===name.toLocaleLowerCase("it"))) return json({error:"Esiste già un progetto con questo nome."},{status:409});
+        updated={...updated,name};
+      } else if (payload.action==="pinTodlyProject") updated={...updated,pinned:payload.value===true};
+      else updated={...updated,archived:payload.value===true,pinned:payload.value===true?false:item.pinned};
+      await metadataStatement(user.userId,`todly-project:${item.id}`,updated).run();
+      return json({project:updated});
+    }
+    if (payload.action === "deleteTodlyProject") {
+      const state = await readState(user.userId);
+      const item = state.projects.find(p=>p.id===payload.id);
+      if (!item) return json({error:"Progetto non trovato."},{status:404});
+      await metadataStatement(user.userId,`todly-project:${item.id}`,{...item,kind:"todlyProject",deleted:true}).run();
+      return json({ok:true});
+    }
     if (payload.action === "createProject") {
       const name = typeof payload.name === "string" ? payload.name.trim() : "";
       if (!name || name.length > 80 || name === "Tutte le aree") return json({ error: "Inserisci un nome di massimo 80 caratteri." }, { status: 400 });
@@ -60,7 +108,7 @@ export async function POST(request: Request) {
     }
     const title = typeof payload.title === "string" ? payload.title.trim() : "";
     if (!title) return json({ error: "Inserisci il nome dell’attività." }, { status: 400 });
-    const task: Task = { id: typeof payload.id === "string" && UUID.test(payload.id) ? payload.id : crypto.randomUUID(), title: title.slice(0, 180), description: typeof payload.description === "string" ? payload.description.trim().slice(0, 1200) : "", project: typeof payload.project === "string" && payload.project.trim() ? payload.project.trim().slice(0, 80) : "Personale", category: typeof payload.category === "string" ? payload.category.trim().slice(0, 80) : "", status: "Da iniziare", priority: payload.priority === "Alta" || payload.priority === "Bassa" || payload.priority === "Di routine" ? payload.priority : "Media", dueDate: typeof payload.dueDate === "string" && payload.dueDate ? payload.dueDate : null, createdAt: new Date().toISOString(), isImported: false };
+    const task: Task = { id: typeof payload.id === "string" && UUID.test(payload.id) ? payload.id : crypto.randomUUID(), title: title.slice(0, 180), description: typeof payload.description === "string" ? payload.description.trim().slice(0, 1200) : "", project: typeof payload.project === "string" && payload.project.trim() ? payload.project.trim().slice(0, 80) : "Personale", category: typeof payload.category === "string" ? payload.category.trim().slice(0, 80) : "", status: "Da iniziare", priority: payload.priority === "Alta" || payload.priority === "Bassa" || payload.priority === "Di routine" ? payload.priority : "Media", dueDate: typeof payload.dueDate === "string" && payload.dueDate ? payload.dueDate : null, createdAt: new Date().toISOString(), isImported: false, projectId: typeof payload.projectId === "string" ? payload.projectId : null };
     await save(user.userId, task); return json({ task }, { status: 201 });
   } catch (error) { console.error("TodlyCodex task save failed", error); return json({ error: "Non riesco a salvare l’attività. Riprova." }, { status: 503 }); }
 }
@@ -72,7 +120,7 @@ export async function PATCH(request: Request) {
     if (typeof payload.id !== "string" || typeof payload.title !== "string" || !payload.title.trim()) return json({ error: "Attività non valida." }, { status: 400 });
     const existing = await readTask(user.userId, payload.id);
     if (!existing) return json({ error: "Attività non trovata." }, { status: 404 });
-    const task: Task = { id: payload.id, title: payload.title.trim().slice(0, 180), description: typeof payload.description === "string" ? payload.description.trim().slice(0, 1200) : "", project: typeof payload.project === "string" && payload.project.trim() ? payload.project.trim().slice(0, 80) : "Personale", category: typeof payload.category === "string" ? payload.category.trim().slice(0, 80) : "", status: payload.status === "In corso" || payload.status === "Completato" ? payload.status : "Da iniziare", priority: payload.priority === "Alta" || payload.priority === "Bassa" || payload.priority === "Di routine" ? payload.priority : "Media", dueDate: typeof payload.dueDate === "string" && payload.dueDate ? payload.dueDate : null, sourceDate: existing.sourceDate, createdAt: existing.createdAt, pinned: Boolean(payload.pinned), archived: Boolean(payload.archived), completedOn: payload.priority === "Di routine" && payload.status === "Completato" ? todayInRome() : null, isImported: existing.isImported };
+    const task: Task = { id: payload.id, title: payload.title.trim().slice(0, 180), description: typeof payload.description === "string" ? payload.description.trim().slice(0, 1200) : "", project: typeof payload.project === "string" && payload.project.trim() ? payload.project.trim().slice(0, 80) : "Personale", category: typeof payload.category === "string" ? payload.category.trim().slice(0, 80) : "", status: payload.status === "In corso" || payload.status === "Completato" ? payload.status : "Da iniziare", priority: payload.priority === "Alta" || payload.priority === "Bassa" || payload.priority === "Di routine" ? payload.priority : "Media", dueDate: typeof payload.dueDate === "string" && payload.dueDate ? payload.dueDate : null, sourceDate: existing.sourceDate, createdAt: existing.createdAt, pinned: Boolean(payload.pinned), archived: Boolean(payload.archived), completedOn: payload.priority === "Di routine" && payload.status === "Completato" ? todayInRome() : null, isImported: existing.isImported, projectId: typeof payload.projectId === "string" ? payload.projectId : null };
     await save(user.userId, task); return json({ task });
   } catch (error) { console.error("TodlyCodex task update failed", error); return json({ error: "Non riesco a salvare la modifica. Riprova." }, { status: 503 }); }
 }

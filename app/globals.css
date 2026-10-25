@@ -114,3 +114,59 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .export-button{height:39px;padding:0 15px;margin-left:-10px;background:#fff;color:#171717;border:1px solid #e5e5e5;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:550;flex:none;transition:background .15s,border-color .15s}
 .export-button:hover{background:#f7f7f7;border-color:#d9d9d9}
 @media(max-width:760px){.page-heading>.export-button{display:none}}
+
+/* Project collections sit immediately above work areas, with a single scrolling area list. */
+.sidebar .project-nav[aria-label="Progetti"]{flex:0 0 auto;overflow:visible;padding-bottom:0;margin-top:6px;max-height:34vh;overflow-y:auto}
+.sidebar .project-nav[aria-label="Progetti"] + .projects-label{margin-top:15px}
+.sidebar .project-nav[aria-label="Aree di lavoro"]{flex:1 1 auto;min-height:0;margin-top:6px}
+.todly-project-group{display:flex;flex-direction:column;gap:2px}
+.todly-project-children{padding:0 0 5px 23px;display:flex;flex-direction:column;gap:2px}
+.todly-project-child,.todly-project-add{border:0;background:transparent;text-align:left;display:flex;align-items:center;gap:9px;color:#666;border-radius:7px;padding:8px 9px;font-size:12px;min-height:32px}
+.todly-project-child:hover,.todly-project-add:hover{background:#f0f0f0}
+.todly-project-child span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todly-project-area-manager{padding:12px 20px 18px;border-bottom:1px solid #eee}
+.todly-project-area-manager .form-label{max-width:390px}
+.todly-project-members{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.todly-project-member{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#f6f6f6;border-radius:7px;font-size:12px}
+.todly-project-member button{display:grid;place-items:center;background:none;border:0;color:#888;cursor:pointer}
+@media(max-width:760px){.sidebar .project-nav[aria-label="Progetti"]{max-height:30vh}}
+
+.todly-project-child-row{display:flex;align-items:center;min-width:0;border-radius:7px}
+.todly-project-child-row:hover{background:#f0f0f0}
+.todly-project-child-row .todly-project-child{flex:1;min-width:0}
+.todly-project-child-options{flex:none;width:27px;height:30px;display:grid;place-items:center;border:0;background:transparent;color:#888;border-radius:6px;cursor:pointer}
+.todly-project-child-options:hover{background:#e8e8e8}
+
+/* Nested project area: one full-width hover row, menu aligned to the right. */
+.todly-project-child-row{display:flex!important;flex-direction:row!important;align-items:center!important;width:100%;min-width:0;gap:0;padding:0 3px;border-radius:8px;box-sizing:border-box;transition:background-color .15s ease}
+.todly-project-child-row:hover,.todly-project-child-row:focus-within{background:#ededed}
+.todly-project-child-row>.todly-project-child{display:flex!important;flex:1 1 0!important;min-width:0;width:auto!important;margin:0!important;background:transparent!important;border:0!important;white-space:nowrap}
+.todly-project-child-row>.todly-project-child:hover{background:transparent!important}
+.todly-project-child-row>.todly-project-child-options{display:flex!important;flex:0 0 28px!important;align-items:center;justify-content:center;width:28px!important;height:32px;margin:0!important;padding:0!important;background:transparent!important;border:0!important;opacity:0;visibility:hidden;transition:opacity .15s}
+.todly-project-child-row:hover>.todly-project-child-options,.todly-project-child-row:focus-within>.todly-project-child-options{opacity:1;visibility:visible}
+
+/* Active nested area remains visible while browsing its tasks. */
+.todly-project-child-row.active,.todly-project-child-row.active:hover{background:#ececec}
+.todly-project-child-row.active>.todly-project-child{color:#151515;font-weight:600}
+.breadcrumb .breadcrumb-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer}
+.breadcrumb .breadcrumb-link:hover{text-decoration:underline;color:#222}
+
+/* Project creation dialog, visually consistent with ChatGPT-style project setup. */
+.todly-create-project-modal{width:min(510px,calc(100vw - 32px));padding:22px 20px 20px;border-radius:16px}
+.todly-create-project-modal .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+.todly-create-project-modal .modal-head h2{font-size:20px;font-weight:500;letter-spacing:-.3px;margin:0}
+.todly-create-project-modal .form-label{display:block;margin-bottom:9px;font-size:14px;font-weight:500}
+.todly-project-name-field{display:flex;align-items:center;gap:10px;border:1px solid #d7dce5;border-radius:9px;padding:0 12px;min-height:45px}
+.todly-project-name-field:focus-within{border-color:#5c88f5;box-shadow:0 0 0 1px #5c88f5}
+.todly-project-name-field svg{flex-shrink:0;color:#404040}
+.todly-project-name-field input{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;flex:1;min-width:0;font:inherit;font-size:14px;height:43px}
+.todly-project-modal-footer{display:flex;justify-content:flex-end;margin-top:24px}
+.todly-project-modal-footer .primary-button{border-radius:999px;padding:11px 20px;min-width:120px}
+.todly-project-modal-footer .primary-button:disabled{opacity:.4;cursor:not-allowed}
+
+/* Project context actions mirror work-area hover controls. */
+.todly-project-entry{display:flex;align-items:center;min-width:0}
+.todly-project-entry>.project-select{flex:1 1 0;min-width:0}
+.todly-project-entry>.todly-project-menu-trigger{flex:0 0 30px;display:grid;place-items:center;width:30px;height:32px;border:0;border-radius:6px;background:transparent;color:#777;opacity:0;visibility:hidden;cursor:pointer}
+.todly-project-entry:hover>.todly-project-menu-trigger,.todly-project-entry:focus-within>.todly-project-menu-trigger{opacity:1;visibility:visible}
+.todly-project-entry>.todly-project-menu-trigger:hover{background:rgba(0,0,0,.06)}

@@ -40,7 +40,7 @@ const state = async () => { const r = await api.GET(); assert.equal(r.status, 20
   assert.equal(original.tasks.length, seed.length);
   const target = original.tasks[0];
   userId = 'separate-account-b';
-  assert.deepEqual(await state(), { tasks: [], areaSettings: {} });
+  assert.deepEqual(await state(), { tasks: [], areaSettings: {}, projects: [] });
   assert.equal((await api.PATCH(req('PATCH', target))).status,404);
   assert.equal((await api.DELETE(req('DELETE', {id:target.id}))).status,404);
   for(const action of ['renameProject','pinProject','archiveProject','deleteProject']) assert.equal((await api.POST(req('POST',{action,from:target.project,to:'Hacked',value:true}))).status,404);
@@ -62,7 +62,7 @@ const state = async () => { const r = await api.GET(); assert.equal(r.status, 20
   assert.equal((await api.DELETE(req('DELETE',{id:b.id}))).status,200);
   assert.equal((await state()).tasks.length,0);
   userId='separate-account-c';
-  assert.deepEqual(await state(),{tasks:[],areaSettings:{}});
+  assert.deepEqual(await state(),{tasks:[],areaSettings:{},projects:[]});
   // Empty areas persist independently of tasks and remain scoped to the verified account.
   const createArea = body => api.POST(req('POST', {action:'createProject', ...body}));
   assert.equal((await createArea({name:' ',color:'#abcdef'})).status,400);

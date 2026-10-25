@@ -7,8 +7,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const user = await getAppUser();
   if (user) {
     // Read the tasks here, in the same request, so the page arrives already filled in. If it fails the browser loads them itself.
-    const initial = await readState(user.userId).then(state => ({ tasks: state.tasks, areaSettings: { ...state.settings } }), error => { console.error("Todly initial tasks unavailable", error); return null; });
-    return <Dashboard key={user.userId} displayName={user.fullName ?? user.email} initialTasks={initial?.tasks} initialAreaSettings={initial?.areaSettings} />;
+    const initial = await readState(user.userId).then(state => ({ tasks: state.tasks, areaSettings: { ...state.settings }, projects: state.projects }), error => { console.error("Todly initial tasks unavailable", error); return null; });
+    return <Dashboard key={user.userId} displayName={user.fullName ?? user.email} initialTasks={initial?.tasks} initialAreaSettings={initial?.areaSettings} initialProjects={initial?.projects} />;
   }
   const params = await searchParams;
   const errors: Record<string, string> = {
