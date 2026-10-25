@@ -203,7 +203,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* Smartphone: the whole side menu scrolls as one piece (links, projects, areas and account), not only the areas list. */
 @media(max-width:760px){
   .sidebar,.sidebar-collapsed .sidebar{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .sidebar .project-nav,.sidebar .project-nav[aria-label="Progetti"]{flex:0 0 auto;overflow:visible;max-height:none;min-height:auto}
-  .sidebar>*{flex-shrink:0}
+  .sidebar .project-nav,.sidebar .project-nav[aria-label="Progetti"],.sidebar .project-nav[aria-label="Aree di lavoro"],.sidebar-collapsed .sidebar .project-nav{flex:0 0 auto;overflow:visible;max-height:none;min-height:auto;height:auto}
+  .sidebar>*,.sidebar-collapsed .sidebar>*{flex-shrink:0}
   .sidebar .sidebar-bottom{margin-top:auto}
 }
