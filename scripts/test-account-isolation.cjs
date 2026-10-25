@@ -8,6 +8,7 @@ const seed = [{ id: 'sample-task', title: 'Sample task', description: '', projec
 const source = fs.readFileSync('app/api/tasks/route.ts', 'utf8');
 const owner = 'test-owner';
 let userId = owner;
+let peekUserId; // undefined = cookie hint matches the signed-in user
 const db = new DatabaseSync(':memory:');
 db.exec('CREATE TABLE task_records (key TEXT PRIMARY KEY, user_id TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL)');
 const binding = {
@@ -23,7 +24,7 @@ function load(code) {
     exports: module.exports, module,
     require(name) {
       if(name === 'cloudflare:workers') return { env: { DB: binding } };
-      if(name.includes('auth-context')) return { getAppUser: async () => userId ? { userId, email: 'test@example.com' } : null };
+      if(name.includes('auth-context')) return { getAppUser: async () => userId ? { userId, email: 'test@example.com' } : null, authContext: () => ({ peekUserId: peekUserId === undefined ? userId : peekUserId }) };
       if(name.includes('task-store')) return load(fs.readFileSync('lib/task-store.ts', 'utf8'));
       if(name.includes('data-seed')) return seed;
       throw Error(name);
@@ -33,7 +34,7 @@ function load(code) {
 }
 const api = load(source);
 const req = (method, body) => new Request('https://todly.test/api/tasks', { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-const state = async () => { const r = await api.GET(); assert.equal(r.status, 200); assert.match(r.headers.get('cache-control'), /private, no-store/); return r.json(); };
+const state = async () => { const r = await api.GET(); assert.equal(r.status, 200); assert.match(r.headers.get('cache-control'), /private, no-store/); const { userId: who, displayName, ...body } = await r.json(); assert.equal(who, userId); assert.equal(displayName, 'test@example.com'); return body; };
 (async () => {
   for (const task of seed) db.prepare('INSERT INTO task_records VALUES (?, ?, ?, ?)').run(`${owner}:${task.id}`, owner, JSON.stringify(task), '2026-10-16T08:00:00Z');
   const original = await state();
@@ -101,6 +102,9 @@ const state = async () => { const r = await api.GET(); assert.equal(r.status, 20
   assert.equal((await quick.json()).task.title,'Instant 2');
   assert.equal((await api.DELETE(req('DELETE',{id:clientId}))).status,200);
   assert.equal((await api.PATCH(req('PATCH',{id:clientId,title:'Gone'}))).status,404);
+  // A session cookie pointing at someone else must never change whose data is returned.
+  userId=owner; const own=await state(); peekUserId='separate-account-d'; const spoofed=await state(); peekUserId=undefined;
+  assert.deepEqual(spoofed.tasks.map(t=>t.id).sort(),own.tasks.map(t=>t.id).sort());   userId='separate-account-d';
   console.log('PASS: empty area creation, validation, duplicates, persistence, color preservation, rename/archive/delete and account isolation.');
   userId=null;
   for(const method of ['GET','POST','PATCH','DELETE']) assert.equal((await api[method](method==='GET'?undefined:req(method,{title:'No',id:target.id}))).status,401);

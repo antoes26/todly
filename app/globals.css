@@ -198,3 +198,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     touch-action:manipulation;
   }
 }
+
+.boot-splash{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--canvas);color:var(--muted);text-align:center;padding:24px}.boot-splash .brand-mark{animation:boot-pulse 1.4s ease-in-out infinite}.boot-label{font-size:20px;font-weight:700;letter-spacing:-.7px;color:var(--ink)}.boot-splash p{max-width:280px;margin:4px 0 0}.boot-splash button{border:0;border-radius:9px;background:#33454f;color:#fff;padding:11px 22px}@keyframes boot-pulse{0%,100%{transform:rotate(-5deg) scale(1)}50%{transform:rotate(-5deg) scale(.92)}}@media(prefers-reduced-motion:reduce){.boot-splash .brand-mark{animation:none}}

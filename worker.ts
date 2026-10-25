@@ -41,7 +41,7 @@ export default {
         },
       },
     }) : null;
-    const response = await runWithAuth({ client, config, peekUserId: url.pathname === "/" ? peekSessionUserId(jar) : null }, () => handler.fetch(request, env, ctx));
+    const response = await runWithAuth({ client, config, peekUserId: url.pathname === "/" || url.pathname === "/api/tasks" ? peekSessionUserId(jar) : null }, () => handler.fetch(request, env, ctx));
     const headers = new Headers(response.headers);
     for (const cookie of outgoingCookies) headers.append("Set-Cookie", cookie);
     if (protectedPath || outgoingCookies.length) {

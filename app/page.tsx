@@ -2,8 +2,12 @@ import { authContext, getAppUser } from "../lib/auth-context";
 import { readState } from "../lib/task-store";
 import { Dashboard } from "./todo-app";
 import { AuthPanel } from "./auth-panel";
+import { AppBoot } from "./app-boot";
 export const dynamic = "force-dynamic";
 export default async function Home({ searchParams }: { searchParams: Promise<{ auth_error?: string }> }) {
+  // With a saved session the page is sent back immediately and the browser loads the tasks: no blank screen while identity and data are checked.
+  // The tasks themselves still go through the full identity check in /api/tasks.
+  if (authContext().client && authContext().peekUserId) return <AppBoot />;
   // Start reading the data at the same time as the identity check instead of after it: the two network trips overlap and the page opens sooner.
   // The early read uses the id from the session cookie and is used only if the verified user turns out to be the same person.
   const peekId = authContext().peekUserId;

@@ -1,4 +1,4 @@
-import { getAppUser } from "../../../lib/auth-context";
+import { authContext, getAppUser } from "../../../lib/auth-context";
 import { database, metadataStatement, readState, readTask, save, todayInRome, type AreaSettings, type Task } from "../../../lib/task-store";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +11,18 @@ function json(body: unknown, init: ResponseInit = {}) {
 }
 
 export async function GET() {
+  // Read the data at the same time as the identity check; the early read is used only if the verified user is the same person.
+  const started = Date.now();
+  const peekId = authContext().peekUserId;
+  const early = peekId ? readState(peekId) : null;
+  early?.catch(() => undefined);
   const user = await getAppUser();
+  const authMs = Date.now() - started;
   if (!user) return json({ error: "Accedi per continuare." }, { status: 401 });
   try {
-    const state = await readState(user.userId);
-    return json({ tasks: state.tasks, areaSettings: state.settings, projects: state.projects });
+    const state = await (early && peekId === user.userId ? early : readState(user.userId));
+    return json({ userId: user.userId, displayName: user.fullName ?? user.email, tasks: state.tasks, areaSettings: state.settings, projects: state.projects },
+      { headers: { "Server-Timing": `auth;dur=${authMs}, total;dur=${Date.now() - started}` } });
   } catch (error) { console.error("TodlyCodex tasks unavailable", error); return json({ error: "Non riesco a caricare le attività. Riprova tra poco." }, { status: 503 }); }
 }
 
