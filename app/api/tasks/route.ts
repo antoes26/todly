@@ -39,9 +39,14 @@ export async function POST(request: Request) {
       if (!item) return json({error:"Progetto non trovato."},{status:404});
       if (!area || (!state.tasks.some(t=>t.project===area) && !Object.hasOwn(state.settings,area)) || state.settings[area]?.deleted) return json({error:"Area non trovata."},{status:404});
       const existing = item.areaNames??[];
-      const areaNames = payload.action==="addAreaToTodlyProject" ? [...new Set([...existing,area])] : existing.filter(n=>n!==area);
+      const adding = payload.action==="addAreaToTodlyProject";
+      const areaNames = adding ? [...new Set([...existing,area])] : existing.filter(n=>n!==area);
+      // An area belongs to at most one project: moving it removes the previous membership.
+      const statements = state.projects.filter(p=>p.id!==item.id && adding && (p.areaNames??[]).includes(area))
+        .map(p=>metadataStatement(user.userId,`todly-project:${p.id}`,{...p,kind:"todlyProject",areaNames:(p.areaNames??[]).filter(n=>n!==area)}));
       const updated = {...item,kind:"todlyProject",areaNames};
-      await metadataStatement(user.userId,`todly-project:${item.id}`,updated).run();
+      statements.push(metadataStatement(user.userId,`todly-project:${item.id}`,updated));
+      await database().batch(statements);
       return json({project:updated});
     }
     if (payload.action === "deleteTodlyProject") {
