@@ -20,6 +20,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
   const [areaSettings,setAreaSettings]=useState<AreaSettings>(initialAreaSettings??{}), [showArchived,setShowArchived]=useState(false), [areaMenu,setAreaMenu]=useState<{name:string;x:number;y:number}|null>(null), [areaBusy,setAreaBusy]=useState(false);
   const [taskMenu,setTaskMenu]=useState<{task:Task;x:number;y:number}|null>(null),[archivedTasks,setArchivedTasks]=useState(false);
   const [areaModal,setAreaModal]=useState(false);
+  const [projectModal,setProjectModal]=useState(false);
   const [todlyProjects,setTodlyProjects]=useState<TodlyProject[]>(initialProjects??[]),[selectedProject,setSelectedProject]=useState<string|null>(null),[creatingProject,setCreatingProject]=useState(false);
   const [error,setError]=useState(""), [saving,setSaving]=useState(false);
   const queue=useRef(new Map<string,Promise<void>>());
@@ -81,7 +82,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
     setError("");
     try{const r=await fetch("/api/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,id,from:area})});const d=await r.json() as {error?:string;project?:TodlyProject};if(!r.ok||!d.project)throw Error(d.error||"Operazione non riuscita");setTodlyProjects(items=>items.map(p=>p.id===d.project!.id?d.project!:{...p,areaNames:(p.areaNames??[]).filter(n=>n!==area)}))}catch(e){setError(e instanceof Error?e.message:"Operazione non riuscita")}
   }
-  async function createTodlyProject(){const name=window.prompt("Nome del nuovo progetto")?.trim();if(!name)return;setCreatingProject(true);setError("");try{const r=await fetch("/api/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"createTodlyProject",name})});const d=await r.json() as {error?:string;project?:TodlyProject};if(!r.ok||!d.project)throw Error(d.error||"Creazione non riuscita");setTodlyProjects(p=>[...p,d.project!]);setSelectedProject(d.project.id);setView("project");setMobileMenu(false)}catch(e){setError(e instanceof Error?e.message:"Errore di creazione")}finally{setCreatingProject(false)}}
+  async function createTodlyProject(name:string){if(!name.trim())return;setCreatingProject(true);setError("");try{const r=await fetch("/api/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"createTodlyProject",name})});const d=await r.json() as {error?:string;project?:TodlyProject};if(!r.ok||!d.project)throw Error(d.error||"Creazione non riuscita");setTodlyProjects(p=>[...p,d.project!]);setSelectedProject(d.project.id);setView("project");setMobileMenu(false);setProjectModal(false)}catch(e){setError(e instanceof Error?e.message:"Errore di creazione")}finally{setCreatingProject(false)}}
   async function areaAction(action:string,name:string,value?:boolean){
     setAreaMenu(null);
     const to=action==="renameProject"?window.prompt("Rinomina area di lavoro",name)?.trim():undefined;
@@ -115,7 +116,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
         <button className={view==="overview"?"active":""} onClick={()=>{setView("overview");setProject("Tutte le aree");setMobileMenu(false)}}><LayoutDashboard size={18}/><span className="nav-text">Panoramica</span></button>
         <button className={view==="tasks"&&project==="Tutte le aree"?"active":""} onClick={()=>{setView("tasks");setProject("Tutte le aree");setMobileMenu(false)}}><ListTodo size={18}/><span className="nav-text">Tutte le attività</span><span className="nav-count">{open.length}</span></button>
       </nav>
-      <div className="side-label projects-label">PROGETTI <button disabled={creatingProject} onClick={()=>void createTodlyProject()} aria-label="Aggiungi progetto"><Plus size={15}/></button></div>
+      <div className="side-label projects-label">PROGETTI <button disabled={creatingProject} onClick={()=>setProjectModal(true)} aria-label="Aggiungi progetto"><Plus size={15}/></button></div>
       <nav className="project-nav" aria-label="Progetti">
         {todlyProjects.map(p=><div className="todly-project-group" key={p.id}><div className={`project-entry ${view==="project"&&selectedProject===p.id?"active":""}`}><button className="project-select" onClick={()=>{setSelectedProject(p.id);setView("project");setMobileMenu(false)}}><Folder size={16}/><span className="project-name">{p.name}</span><span className="project-number">{(p.areaNames??[]).length}</span></button></div>{expandedTodlyProjectId===p.id&&<div className="todly-project-children">{(p.areaNames??[]).map(area=><div key={area} className={`todly-project-child-row ${view==="tasks"&&project===area?"active":""}`}><button className="todly-project-child" onClick={()=>{setProject(area);setView("tasks");setMobileMenu(false)}}><span className="project-dot" style={areaSettings[area]?.color?{backgroundColor:areaSettings[area].color}:undefined}/><span>{area}</span></button><button className="todly-project-child-options" title={`Opzioni area ${area}`} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();setAreaMenu({name:area,x:Math.max(12,Math.min(rect.right-214,window.innerWidth-226)),y:Math.min(rect.bottom+6,window.innerHeight-250)})}}><MoreHorizontal size={15}/></button></div>)}<button className="todly-project-add" onClick={()=>document.getElementById("todly-project-area-picker")?.focus()}><Plus size={14}/> Aggiungi area di lavoro</button></div>}</div>)}
       </nav>
@@ -160,6 +161,7 @@ export function Dashboard({displayName,initialTasks,initialAreaSettings,initialP
       <button role="menuitem" disabled={saving} onClick={()=>taskAction(taskMenu.task,{archived:!taskMenu.task.archived})}>{taskMenu.task.archived?<ArchiveRestore size={15}/>:<Archive size={15}/>} {taskMenu.task.archived?"Ripristina attività":"Archivia attività"}</button>
       <button role="menuitem" className="delete-area" disabled={saving} onClick={()=>{const task=taskMenu.task;setTaskMenu(null);if(window.confirm(`Eliminare l’attività “${task.title}”?`))removeTask(task.id)}}><Trash2 size={15}/>Elimina attività</button>
     </div></>}
+    {projectModal&&<ProjectModal busy={creatingProject} onClose={()=>{if(!creatingProject)setProjectModal(false)}} onCreate={createTodlyProject}/>}
     {areaModal&&<AreaModal busy={areaBusy} onClose={()=>{if(!areaBusy)setAreaModal(false)}} onCreate={async(name,color)=>{
       setAreaBusy(true);
       try {
@@ -192,6 +194,21 @@ function ColorPicker({value,disabled,labelledBy,onChange}:{value:string;disabled
       <div className="color-swatches">{areaColors.map(swatch=><button key={swatch} type="button" className={swatch===value?"is-selected":""} style={{background:swatch}} aria-label={swatch} aria-pressed={swatch===value} onClick={()=>{onChange(swatch);setOpen(false)}}>{swatch===value&&<Check size={13}/>}</button>)}</div>
       <label className="color-hex">Personalizzato<input value={draft} maxLength={7} spellCheck={false} placeholder="#adc5d1" onChange={event=>{setDraft(event.target.value);commit(event.target.value)}} onBlur={()=>setDraft(value)} onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();setOpen(false)}}}/></label>
     </div>}
+  </div>;
+}
+
+function ProjectModal({busy,onClose,onCreate}:{busy:boolean;onClose:()=>void;onCreate:(name:string)=>Promise<void>}) {
+  const [name,setName]=useState(""),[error,setError]=useState("");
+  return <div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
+    <div className="task-modal todly-create-project-modal" role="dialog" aria-modal="true" aria-labelledby="todly-project-modal-title">
+      <div className="modal-head"><h2 id="todly-project-modal-title">Crea progetto</h2><button className="modal-close" type="button" disabled={busy} onClick={onClose} aria-label="Chiudi"><X size={18}/></button></div>
+      <form onSubmit={async event=>{event.preventDefault();if(busy||!name.trim())return;setError("");try{await onCreate(name.trim())}catch(failure){setError(failure instanceof Error?failure.message:"Creazione non riuscita")}}}>
+        <label className="form-label" htmlFor="todly-project-name">Nome del progetto</label>
+        <div className="todly-project-name-field"><Folder size={19}/><input id="todly-project-name" autoFocus maxLength={80} placeholder="Es. Viaggio a Copenaghen" value={name} onChange={event=>setName(event.target.value)} required/></div>
+        {error&&<p className="form-error" role="alert">{error}</p>}
+        <div className="todly-project-modal-footer"><button className="primary-button" type="submit" disabled={busy||!name.trim()}>{busy?"Creazione…":"Crea progetto"}</button></div>
+      </form>
+    </div>
   </div>;
 }
 
