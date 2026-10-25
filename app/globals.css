@@ -170,3 +170,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .todly-project-entry>.todly-project-menu-trigger{flex:0 0 30px;display:grid;place-items:center;width:30px;height:32px;border:0;border-radius:6px;background:transparent;color:#777;opacity:0;visibility:hidden;cursor:pointer}
 .todly-project-entry:hover>.todly-project-menu-trigger,.todly-project-entry:focus-within>.todly-project-menu-trigger{opacity:1;visibility:visible}
 .todly-project-entry>.todly-project-menu-trigger:hover{background:rgba(0,0,0,.06)}
+
+/* Touch screens: avoid iOS Safari's first-tap hover activation on project rows. */
+@media(hover:none), (pointer:coarse){
+  .todly-project-entry:hover{background:transparent}
+  .todly-project-entry.active:hover{background:#efefef}
+  .todly-project-entry>.todly-project-menu-trigger{opacity:1;visibility:visible;min-width:40px;min-height:44px}
+  .todly-project-entry>.project-select{min-height:44px;touch-action:manipulation}
+  .todly-project-child,.todly-project-child-options{min-height:44px;touch-action:manipulation}
+}
