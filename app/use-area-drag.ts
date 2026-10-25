@@ -33,7 +33,37 @@ export function useAreaDrag(onDrop: (source: AreaDragSource, target: AreaDropTar
       if (drop === "list") return { kind: "list" };
       return null;
     };
+    // Auto-scroll: while dragging near the top or bottom edge of a scrollable list, the list scrolls by itself.
+    const EDGE = 56, MAX_SPEED = 16;
+    let pointer = { x: 0, y: 0 }, frame = 0, container: HTMLElement | null = null;
+    const scrollableAt = (x: number, y: number): HTMLElement | null => {
+      for (let el = document.elementFromPoint(x, y) as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
+        const style = getComputedStyle(el);
+        if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
+      }
+      return null;
+    };
+    const tick = () => {
+      frame = 0;
+      const p = pending.current;
+      if (!p?.active) return;
+      container = scrollableAt(pointer.x, pointer.y) ?? container;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      // Only scroll when the pointer is horizontally over the list it belongs to.
+      if (pointer.x < rect.left || pointer.x > rect.right) return;
+      let dy = 0;
+      if (pointer.y < rect.top + EDGE) dy = -Math.ceil(MAX_SPEED * Math.min(1, (rect.top + EDGE - pointer.y) / EDGE));
+      else if (pointer.y > rect.bottom - EDGE) dy = Math.ceil(MAX_SPEED * Math.min(1, (pointer.y - (rect.bottom - EDGE)) / EDGE));
+      if (!dy) return;
+      const before = container.scrollTop;
+      container.scrollTop += dy;
+      if (container.scrollTop !== before) setTarget(find(pointer.x, pointer.y, p.source));
+      frame = requestAnimationFrame(tick);
+    };
     const stop = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0; container = null;
       pending.current = null;
       document.body.classList.remove("area-dragging");
       setDrag(null);
@@ -48,8 +78,10 @@ export function useAreaDrag(onDrop: (source: AreaDragSource, target: AreaDropTar
         document.body.classList.add("area-dragging");
         window.getSelection()?.removeAllRanges();
       }
+      pointer = { x: e.clientX, y: e.clientY };
       setDrag({ source: p.source, x: e.clientX, y: e.clientY });
       setTarget(find(e.clientX, e.clientY, p.source));
+      if (!frame) frame = requestAnimationFrame(tick);
     };
     const up = (e: PointerEvent) => {
       const p = pending.current;
