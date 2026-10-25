@@ -13,14 +13,14 @@ const italianDate = (value?:string|null) => value ? new Intl.DateTimeFormat("it-
 
 const todayInRome=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const taskOrder=(a:Task,b:Task)=>Number(a.status==="Completato")-Number(b.status==="Completato")||Number(b.priority==="Di routine")-Number(a.priority==="Di routine")||Number(!!b.pinned)-Number(!!a.pinned)||new Date(b.createdAt??b.sourceDate??0).getTime()-new Date(a.createdAt??a.sourceDate??0).getTime();
-export function Dashboard({displayName,initialTasks,initialAreaSettings}:{displayName:string;initialTasks?:Task[];initialAreaSettings?:AreaSettings}) {
+export function Dashboard({displayName,initialTasks,initialAreaSettings,initialProjects}:{displayName:string;initialTasks?:Task[];initialAreaSettings?:AreaSettings;initialProjects?:TodlyProject[]}) {
   const [tasks,setTasks] = useState<Task[]>(initialTasks??[]), [loading,setLoading]=useState(!initialTasks), [view,setView]=useState<View>("overview");
   const [project,setProject]=useState("Tutte le aree"), [status,setStatus]=useState<(typeof statuses)[number]>("Tutte"), [query,setQuery]=useState(""), [createdRange,setCreatedRange]=useState("Tutte le date");
   const [modal,setModal]=useState(false), [editing,setEditing]=useState<Task|null>(null), [mobileMenu,setMobileMenu]=useState(false), [sidebarCollapsed,setSidebarCollapsed]=useState(false);
   const [areaSettings,setAreaSettings]=useState<AreaSettings>(initialAreaSettings??{}), [showArchived,setShowArchived]=useState(false), [areaMenu,setAreaMenu]=useState<{name:string;x:number;y:number}|null>(null), [areaBusy,setAreaBusy]=useState(false);
   const [taskMenu,setTaskMenu]=useState<{task:Task;x:number;y:number}|null>(null),[archivedTasks,setArchivedTasks]=useState(false);
   const [areaModal,setAreaModal]=useState(false);
-  const [todlyProjects,setTodlyProjects]=useState<TodlyProject[]>([]),[selectedProject,setSelectedProject]=useState<string|null>(null),[creatingProject,setCreatingProject]=useState(false);
+  const [todlyProjects,setTodlyProjects]=useState<TodlyProject[]>(initialProjects??[]),[selectedProject,setSelectedProject]=useState<string|null>(null),[creatingProject,setCreatingProject]=useState(false);
   const [error,setError]=useState(""), [saving,setSaving]=useState(false);
   const queue=useRef(new Map<string,Promise<void>>());
   async function signOut(){
