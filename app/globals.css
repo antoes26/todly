@@ -240,3 +240,21 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:760px){
   .todly-project-entry>.todly-project-folder-toggle{min-width:44px;min-height:44px;flex-basis:44px}
 }
+
+/* Keep closed/open folder artwork in exactly the same icon slot. */
+.todly-project-folder-toggle{position:relative!important;display:flex!important;align-items:center;justify-content:center}
+.todly-project-folder-toggle>.folder-closed-icon,
+.todly-project-folder-toggle>.folder-open-icon{
+  position:absolute!important;top:50%;left:50%;grid-area:auto!important;
+  transform:translate(-50%,-50%)!important;
+  transition:opacity .16s ease,scale .18s ease!important;
+  pointer-events:none;
+}
+.todly-project-folder-toggle>.folder-closed-icon{opacity:1;scale:1}
+.todly-project-folder-toggle>.folder-open-icon{opacity:0;scale:.92}
+.todly-project-folder-toggle[aria-expanded="true"]>.folder-closed-icon{opacity:0}
+.todly-project-folder-toggle[aria-expanded="true"]>.folder-open-icon{opacity:1;scale:1}
+@media(hover:hover) and (pointer:fine){
+  .todly-project-folder-toggle[aria-expanded="false"]:hover>.folder-closed-icon{opacity:0;scale:.92}
+  .todly-project-folder-toggle[aria-expanded="false"]:hover>.folder-open-icon{opacity:1;scale:1.08}
+}
