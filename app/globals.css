@@ -219,3 +219,24 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .project-nav.drop-list,.projects-label.drop-list{background:#f2f2f2;border-radius:8px}
 .is-dragged{opacity:.4}
 .area-drag-ghost{position:fixed;z-index:60;pointer-events:none;max-width:220px;padding:7px 11px;background:#fff;color:#171717;border:1px solid #e5e5e5;border-radius:7px;box-shadow:0 8px 24px #0000001a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Project folder control: independent expansion with a subtle desktop preview. */
+.todly-project-entry>.todly-project-folder-toggle{
+  display:grid;place-items:center;position:relative;flex:0 0 34px;
+  width:34px;min-height:43px;margin-left:3px;padding:0;border:0;
+  background:transparent;color:inherit;border-radius:8px;cursor:pointer;
+  touch-action:manipulation;
+}
+.todly-project-folder-toggle svg{grid-area:1/1;transition:transform .18s ease,opacity .15s ease}
+.todly-project-folder-toggle .folder-open-icon{opacity:0;transform:scale(.8)}
+.todly-project-folder-toggle[aria-expanded="true"] .folder-closed-icon{opacity:0}
+.todly-project-folder-toggle[aria-expanded="true"] .folder-open-icon{opacity:1;transform:scale(1)}
+@media(hover:hover) and (pointer:fine){
+  .todly-project-folder-toggle[aria-expanded="false"]:hover .folder-closed-icon{opacity:0;transform:rotate(-9deg) scale(.92)}
+  .todly-project-folder-toggle[aria-expanded="false"]:hover .folder-open-icon{opacity:1;transform:rotate(-6deg) scale(1.08)}
+}
+.todly-project-folder-toggle:focus-visible{outline:2px solid #648c9b;outline-offset:-2px}
+.todly-project-entry>.project-select{cursor:pointer}
+@media(max-width:760px){
+  .todly-project-entry>.todly-project-folder-toggle{min-width:44px;min-height:44px;flex-basis:44px}
+}
