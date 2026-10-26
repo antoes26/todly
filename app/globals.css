@@ -275,3 +275,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .task-manager .filters-row>.filter-select{flex:1 1 100px;min-width:0}
   .task-manager .filters-row>.filter-select select{width:100%;min-width:0}
 }
+
+/* Make the entire filter, including the arrow, activate its native select. */
+.full-click-filter{position:relative;cursor:pointer}
+.full-click-filter select{position:relative;z-index:2;width:100%;min-height:40px;padding-right:22px;cursor:pointer}
+.full-click-filter .filter-chevron{position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:3;pointer-events:none}
+.overview-filters{margin-top:12px}
+.focus-card.task-manager{padding-top:18px}
+.focus-card.task-manager .task-row.has-created-date{min-width:0}
