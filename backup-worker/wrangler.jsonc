@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "todly-backup",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "vars": {
+    "ACCOUNT_ID": "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID",
+    "DATABASE_ID": "84a04927-f61e-495a-8a60-bcc0767b9d53"
+  },
+  "workflows": [{
+    "name": "todly-d1-backup",
+    "binding": "BACKUP_WORKFLOW",
+    "class_name": "TodlyBackupWorkflow",
+    "schedules": ["0 1 * * *"]
+  }],
+  "r2_buckets": [{
+    "binding": "BACKUP_BUCKET",
+    "bucket_name": "todly-backups"
+  }]
+}
