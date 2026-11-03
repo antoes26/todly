@@ -112,6 +112,9 @@ export async function POST(request: Request) {
         const statements = [...aliases].map(([key, value]) => metadataStatement(user.userId, `section-name:${key}`, { kind: "sectionRename", from: key, to: value }));
         statements.push(database().prepare("DELETE FROM task_records WHERE key = ? AND user_id = ?").bind(`${user.userId}:section-name:${to}`, user.userId));
         statements.push(metadataStatement(user.userId, `area-settings:${to}`, { kind: "areaSettings", name: to, settings }));
+        // Projects that contained the area keep it under its new name.
+        for (const p of state.projects.filter(p => (p.areaNames ?? []).includes(from)))
+          statements.push(metadataStatement(user.userId, `todly-project:${p.id}`, { ...p, kind: "todlyProject", areaNames: [...new Set((p.areaNames ?? []).map(n => n === from ? to : n))] }));
         statements.push(database().prepare("DELETE FROM task_records WHERE key = ? AND user_id = ?").bind(`${user.userId}:area-settings:${from}`, user.userId));
         await database().batch(statements);
         return json({ project: to });

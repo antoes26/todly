@@ -31,8 +31,9 @@ export async function readState(userId: string) {
   for (const [id, saved] of changes) if (!saved.task.deleted) tasks.set(id, { ...saved.task, createdAt: saved.task.createdAt || saved.updatedAt, project: resolve(saved.task.project) });
   // Custom order of the work areas chosen by drag and drop; renamed areas keep their place.
   const areaOrder = [...new Set(savedOrder.map(resolve))];
-  // Areas deleted before this fix may still be listed inside a project: hide them there too.
-  for (const p of projects) if (p.areaNames) p.areaNames = p.areaNames.filter(n => !settings[n]?.deleted);
+  // Project folders follow renames (an old name becomes the new one) and never list areas that were deleted or no longer exist.
+  const liveAreas = new Set([...[...tasks.values()].map(t => t.project), ...Object.keys(settings)].filter(n => !settings[n]?.deleted));
+  for (const p of projects) if (p.areaNames) p.areaNames = [...new Set(p.areaNames.map(resolve))].filter(n => liveAreas.has(n));
   return { areaOrder, projects, tasks: [...tasks.values()].filter(t => !settings[t.project]?.deleted).map(t => t.priority === "Di routine" && t.status === "Completato" && t.completedOn !== todayInRome() ? { ...t, status: "Da iniziare" as const, completedOn: null } : t), settings, renames, resolve };
 }
 export function metadataStatement(userId: string, key: string, payload: unknown) {
