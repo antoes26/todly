@@ -108,6 +108,17 @@ const state = async () => { const r = await api.GET(); assert.equal(r.status, 20
   assert.deepEqual(await addArea('Gamma',2),['Delta','Beta','Gamma']);
   assert.deepEqual(await addArea('Beta'),['Delta','Beta','Gamma']);
   assert.deepEqual(await addArea('Omega',99),['Delta','Beta','Gamma','Omega']);
+  // Deleting an area that belongs to a project removes it from the project as well.
+  assert.equal((await api.POST(req('POST',{action:'deleteProject',from:'Beta'}))).status,200);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Delta','Gamma','Omega']);
+  // Older data: an area already deleted but still listed in a project is hidden.
+  db.prepare('UPDATE task_records SET payload=? WHERE key=?').run(JSON.stringify({...proj,kind:'todlyProject',areaNames:['Delta','Beta','Gamma','Omega']}),`separate-account-e:todly-project:${proj.id}`);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Delta','Gamma','Omega']);
+  // Renaming an area inside a project keeps it there under the new name; stale old names (as in older data) are folded in.
+  assert.equal((await api.POST(req('POST',{action:'renameProject',from:'Delta',to:'Magazzino'}))).status,200);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Magazzino','Gamma','Omega']);
+  db.prepare('UPDATE task_records SET payload=? WHERE key=?').run(JSON.stringify({...proj,kind:'todlyProject',areaNames:['Gamma','Delta','Magazzino','Fantasma','Omega']}),`separate-account-e:todly-project:${proj.id}`);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Gamma','Magazzino','Omega']);
   userId=owner;
   assert.deepEqual((await state()).areaOrder,[]);
   userId='separate-account-e';
