@@ -118,7 +118,15 @@ export async function POST(request: Request) {
       }
       if (payload.action === "pinProject") settings.pinned = Boolean(payload.value);
       if (payload.action === "archiveProject") { settings.archived = Boolean(payload.value); settings.pinned = false; }
-      if (payload.action === "deleteProject") settings.deleted = true;
+      if (payload.action === "deleteProject") {
+        settings.deleted = true;
+        // A deleted area must also disappear from every project that contained it.
+        const statements = state.projects.filter(p => (p.areaNames ?? []).includes(from))
+          .map(p => metadataStatement(user.userId, `todly-project:${p.id}`, { ...p, kind: "todlyProject", areaNames: (p.areaNames ?? []).filter(n => n !== from) }));
+        statements.push(metadataStatement(user.userId, `area-settings:${from}`, { kind: "areaSettings", name: from, settings }));
+        await database().batch(statements);
+        return json({ ok: true });
+      }
       await metadataStatement(user.userId, `area-settings:${from}`, { kind: "areaSettings", name: from, settings }).run();
       return json({ ok: true });
     }

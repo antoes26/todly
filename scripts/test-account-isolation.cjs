@@ -108,6 +108,12 @@ const state = async () => { const r = await api.GET(); assert.equal(r.status, 20
   assert.deepEqual(await addArea('Gamma',2),['Delta','Beta','Gamma']);
   assert.deepEqual(await addArea('Beta'),['Delta','Beta','Gamma']);
   assert.deepEqual(await addArea('Omega',99),['Delta','Beta','Gamma','Omega']);
+  // Deleting an area that belongs to a project removes it from the project as well.
+  assert.equal((await api.POST(req('POST',{action:'deleteProject',from:'Beta'}))).status,200);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Delta','Gamma','Omega']);
+  // Older data: an area already deleted but still listed in a project is hidden.
+  db.prepare('UPDATE task_records SET payload=? WHERE key=?').run(JSON.stringify({...proj,kind:'todlyProject',areaNames:['Delta','Beta','Gamma','Omega']}),`separate-account-e:todly-project:${proj.id}`);
+  assert.deepEqual((await state()).projects.find(p=>p.id===proj.id).areaNames,['Delta','Gamma','Omega']);
   userId=owner;
   assert.deepEqual((await state()).areaOrder,[]);
   userId='separate-account-e';

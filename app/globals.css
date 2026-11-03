@@ -316,3 +316,24 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .aggregate-area-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:5px}
   .aggregate-area-chips button{flex:none;min-height:42px}
 }
+
+/* Desktop task tables: room for the whole "•••" button (it was squeezed into a 22px column and clipped). */
+@media(min-width:761px){
+  .task-manager .task-row{grid-template-columns:19px minmax(0,1fr) 74px 102px 30px}
+  .task-manager .task-row.has-created-date{grid-template-columns:19px minmax(0,1fr) 78px 74px 102px 30px}
+  .task-manager .column-labels{grid-template-columns:78px 74px 102px 30px}
+  .task-row .row-more{width:30px;height:30px;padding:0;justify-self:center}
+}
+
+/* Sortable column headers (Data, Priorità, Stato). */
+.column-labels .column-sort{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:3px 2px;border:0;border-radius:5px;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;cursor:pointer;white-space:nowrap}
+.column-labels .column-sort:hover{color:#333;background:#f3f3f3}
+.column-labels .column-sort.active{color:#171717;font-weight:600}
+.column-labels .sort-arrows{display:inline-flex;flex-direction:column;line-height:0;margin-top:-1px}
+.column-labels .sort-arrows svg{margin:-2px 0;opacity:.35}
+.column-labels .sort-arrows svg.on{opacity:1}
+
+/* Priority and status pills: click to change them directly from the row. */
+.pill-select{position:relative;cursor:pointer;transition:box-shadow .12s,filter .12s}
+.pill-select:hover,.pill-select:focus-within{box-shadow:0 0 0 1px #d6d6d6;filter:brightness(.98)}
+.pill-select select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;appearance:none;border:0;font-size:13px}
