@@ -3,7 +3,7 @@ import "./globals.css";
 import { PwaSupport } from "./pwa-support";
 
 export const metadata: Metadata = {
-  title: "Todly · Il tuo spazio personale",
+  title: "Todly",
   description: "Le tue attività, i tuoi progetti, un unico posto ordinato.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Todly", statusBarStyle: "default" },
